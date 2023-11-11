@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, send_file
 from PIL import Image
 from PIL.ExifTags import TAGS
 import os
@@ -51,8 +51,7 @@ def upload():
     add_row = f"INSERT INTO asset (name, date, isphoto) VALUES (?, ?, ?);"
     connection = sqlite3.connect('data.db')
     cursor = connection.cursor()
-    # check_table(cursor)
-    cursor.execute(add_row, (id, today.strftime('%Y-%m-%d %H:%M:%S'), isPhoto))
+    cursor.execute(add_row, (id+'.'+format, today.strftime('%Y-%m-%d %H:%M:%S'), isPhoto))
     connection.commit()
     connection.close()
 
@@ -61,7 +60,42 @@ def upload():
 
     return 'Image uploaded and saved successfully'
 
+@app.route('/delete', methods=['POST'])
+def delete():
+    d = request.form.get('date') # 2023-12-25
+    a = request.form.get('asset')
+    if(not(a and d)):
+        return 'Invalid request'
+    path = ""
+    for i in d.split("-"):
+        path = os.path.join(path, i)
+    print(path)
+    if(os.path.exists(os.path.join(path,a))):
 
+        connection = sqlite3.connect('data.db')
+        cursor = connection.cursor()
+        
+        # remove data from db
+        delete_row = f"DELETE FROM asset WHERE name = '{a}'"
+        connection = sqlite3.connect('data.db')
+        cursor = connection.cursor()
+        cursor.execute(delete_row)
+        connection.commit()
+        connection.close()
+    
+        os.remove(os.path.join(path,a))
+        return "ok"
+    return "not found"
+
+@app.route('/view/<date>/<asset>')
+def view(date,asset):
+    path = ""
+    for i in date.split("-"):
+        path = os.path.join(path, i)
+    path = os.path.join(path,asset)
+    if(os.path.exists(path)):
+        return send_file(path)
+    return 'file not found'
 
 if __name__ == '__main__':
     app.run(debug=True)
