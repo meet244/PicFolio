@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, jsonify
 from PIL import Image
 from PIL.ExifTags import TAGS
 import os
@@ -96,6 +96,17 @@ def view(date,asset):
     if(os.path.exists(path)):
         return send_file(path)
     return 'file not found'
+
+@app.route('/list')
+def listOut():
+    # get list of all dates in sorted form and all unique ones
+    connection = sqlite3.connect('data.db')
+    cursor = connection.cursor()
+    cursor.execute("SELECT DISTINCT date FROM asset ORDER BY date DESC")
+    dates = cursor.fetchall()
+    final_dates = list(set(date[0].split()[0] for date in dates))
+
+    return jsonify(final_dates)
 
 if __name__ == '__main__':
     app.run(debug=True)
