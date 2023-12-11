@@ -68,10 +68,14 @@ def get_list():
     return jsonify({"26-10-2023":[1,2], "27-10-2023":[3]})
 
 # api help
-@app.route('/', methods=['GET'])
 @app.route('/api/help', methods=['GET'])
 def get_help():
     return render_template('help.html')
+
+# hello world
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
 
 
 if __name__ == '__main__':
