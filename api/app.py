@@ -1,7 +1,8 @@
 from flask import Flask, jsonify, request, send_file, render_template
+import flask_cors
 
 app = Flask(__name__)
-
+flask_cors.CORS(app)
 
 # Error handler for 404 Not Found
 @app.errorhandler(404)
