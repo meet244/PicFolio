@@ -13,6 +13,10 @@ def not_found_error(error):
 def internal_server_error(error):
     return jsonify({'error': 'Internal Server Error'}), 500
 
+# hello world
+@app.route('/')
+def hello():
+    return jsonify('Hello, World!')
 
 # API to upload photos/videos
 @app.route('/api/upload', methods=['POST'])
@@ -72,11 +76,5 @@ def get_list():
 def get_help():
     return render_template('help.html')
 
-# hello world
-@app.route('/')
-def hello_world():
-    return jsonify('Hello, World!')
-
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    app.run()
