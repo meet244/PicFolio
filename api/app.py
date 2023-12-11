@@ -1,8 +1,6 @@
 from flask import Flask, jsonify, request, send_file, render_template
-import flask_cors
 
 app = Flask(__name__)
-flask_cors.CORS(app)
 
 # Error handler for 404 Not Found
 @app.errorhandler(404)
@@ -17,7 +15,7 @@ def internal_server_error(error):
 # hello world
 @app.route('/')
 def hello():
-    return jsonify('Hello, World!')
+    return render_template('help.html')
 
 # API to upload photos/videos
 @app.route('/api/upload', methods=['POST'])
