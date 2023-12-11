@@ -75,7 +75,7 @@ def get_help():
 # hello world
 @app.route('/')
 def hello_world():
-    return 'Hello, World!'
+    return jsonify('Hello, World!')
 
 
 if __name__ == '__main__':
