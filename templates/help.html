@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>API Documentation</title>
+    <style>
+        /* CSS styles for documentation */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .endpoint {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        .endpoint h2 {
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .param {
+            margin-left: 20px;
+            color: #777;
+        }
+
+        .method {
+            font-weight: bold;
+            color: #009688;
+        }
+
+        .desc {
+            margin-top: 5px;
+            margin-bottom: 15px;
+            color: #444;
+        }
+
+        .response {
+            margin-top: 10px;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>API Documentation</h1>
+
+    <!-- API Endpoint: /api/upload -->
+    <div class="endpoint">
+        <h2>/api/upload</h2>
+        <p class="desc">Endpoint to upload photos/videos</p>
+        <div class="method">Method: POST</div>
+        <div class="param">Parameters:</div>
+        <ul>
+            <li>username (string) - User's name</li>
+            <li>asset (file) - Photo or video to upload</li>
+        </ul>
+        <div class="response">Response: JSON - {'message': 'Uploaded successfully'} or {'error': 'Invalid file type'}</div>
+    </div>
+
+    <!-- API Endpoint: /api/delete/<int:photo_id> -->
+    <div class="endpoint">
+        <h2>/api/delete/&lt;photo_id&gt;</h2>
+        <p class="desc">Endpoint to delete a photo</p>
+        <div class="method">Method: DELETE</div>
+        <div class="param">Parameters:</div>
+        <ul>
+            <li>photo_id (int) - ID of the photo to delete</li>
+        </ul>
+        <div class="response">Response: JSON - {'message': 'Photo deleted successfully'} or {'error': 'Photo not found'}</div>
+    </div>
+
+    <!-- API Endpoint: /api/preview/<int:photo_id> -->
+    <div class="endpoint">
+        <h2>/api/preview/&lt;photo_id&gt;</h2>
+        <p class="desc">Endpoint to get a photo/video preview</p>
+        <div class="method">Method: GET</div>
+        <div class="param">Parameters:</div>
+        <ul>
+            <li>photo_id (int) - ID of the photo/video</li>
+        </ul>
+        <div class="response">Response: Image or video preview</div>
+    </div>
+
+    <!-- API Endpoint: /api/asset/<int:photo_id> -->
+    <div class="endpoint">
+        <h2>/api/asset/&lt;photo_id&gt;</h2>
+        <p class="desc">Endpoint to get a photo/video original</p>
+        <div class="method">Method: GET</div>
+        <div class="param">Parameters:</div>
+        <ul>
+            <li>photo_id (int) - ID of the photo/video</li>
+        </ul>
+        <div class="response">Response: Original photo or video</div>
+    </div>
+
+    <!-- API Endpoint: /api/list -->
+    <div class="endpoint">
+        <h2>/api/list</h2>
+        <p class="desc">Endpoint to get a list of photos/videos</p>
+        <div class="method">Method: GET</div>
+        <div class="response">Response: JSON - List of photos/videos by date</div>
+    </div>
+
+    <!-- API Endpoint: /api/help -->
+    <div class="endpoint">
+        <h2>/api/help</h2>
+        <p class="desc">Endpoint to get API documentation</p>
+        <div class="method">Method: GET</div>
+        <div class="response">Response: HTML - API documentation</div>
+    </div>
+
+</body>
+
+</html>
