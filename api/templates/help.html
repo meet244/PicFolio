@@ -12,7 +12,11 @@
         }
 
         h1 {
-            color: #333;
+            font-size: 72px;
+            background-image: linear-gradient(45deg, rgb(12, 241, 241), rgb(255, 20, 224));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .endpoint {
@@ -109,16 +113,45 @@
         <h2>/api/list</h2>
         <p class="desc">Endpoint to get a list of photos/videos</p>
         <div class="method">Method: GET</div>
-        <div class="response">Response: JSON - List of photos/videos by date</div>
+        <div class="response">Response: JSON - [{"id": 1, "name": "Photo 1", "date": "2023-10-26"}, {"id": 2, "name": "Photo 2", "date": "2023-10-27"}, {"id": 3, "name": "Photo 3", "date": "2023-10-28"}]</div>
     </div>
 
-    <!-- API Endpoint: /api/help -->
+    <!-- API Endpoint: /api/details/<int:photo_id> -->
     <div class="endpoint">
-        <h2>/api/help</h2>
-        <p class="desc">Endpoint to get API documentation</p>
+        <h2>/api/details/&lt;photo_id&gt;</h2>
+        <p class="desc">Endpoint to get asset details</p>
         <div class="method">Method: GET</div>
-        <div class="response">Response: HTML - API documentation</div>
+        <div class="param">Parameters:</div>
+        <ul>
+            <li>photo_id (int) - ID of the photo/video</li>
+        </ul>
+        <div class="response">Response: JSON - {"People":[1,2,3], "tags":["blade", "close-up", "dew", "drop", "leaf", "grass", "green", "plant", "rain", "stem", "water", "water drop"], "date":"26-10-2023", "time":"12:00", "format":"JPG","MP":"16MP","width":1920,"height":1080,"size":"449 KB","location":null}</div>
     </div>
+    
+    <!-- API Endpoint: /api/faces/<int:photo_id> -->
+    <div class="endpoint">
+        <h2>/api/faces/&lt;photo_id&gt;</h2>
+        <p class="desc">Endpoint to get a list of faces</p>
+        <div class="method">Method: GET</div>
+        <div class="param">Parameters:</div>
+        <ul>
+            <li>photo_id (int) - ID of the photo/video</li>
+        </ul>
+        <div class="response">Response: JSON - [{"name":"Meet","image":"https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvMjc5LXBhaTE1NzktbmFtLmpwZw.jpg"}]</div>
+    </div>
+    
+    <!-- API Endpoint: /api/assetface/<int:asset> -->
+    <div class="endpoint">
+        <h2>/api/assetface/&lt;asset&gt;</h2>
+        <p class="desc">Endpoint to get a list of faces in a photo with coordinates</p>
+        <div class="method">Method: GET</div>
+        <div class="param">Parameters:</div>
+        <ul>
+            <li>asset (int) - ID of the photo/video</li>
+        </ul>
+        <div class="response">Response: JSON - [{"faceid":1, "x":10,"y":10,"w":100,"h":100},{"faceid":2, "x":200,"y":200,"w":100,"h":100},{"faceid":3, "x":300,"y":300,"w":100,"h":100}]</div>
+    </div>
+
 
 </body>
 

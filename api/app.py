@@ -70,10 +70,40 @@ def get_list():
     # ...
     return jsonify({"26-10-2023":[1,2], "27-10-2023":[3]})
 
-# api help
-@app.route('/api/help', methods=['GET'])
-def get_help():
-    return render_template('help.html')
+# get asset details
+@app.route('/api/details/<int:photo_id>', methods=['GET'])
+def get_details(photo_id):
+    # Logic to get the photo/video from the database or storage
+    # ...
+    if photo_id not in (1,2,3):
+        return jsonify({'error': 'Photo not found'}), 404
+    #return the photo
+    return jsonify({"People":[1,2,3], "tags":["blade", "close-up", "dew", "drop", "leaf", "grass", "green", "plant", "rain", "stem", "water", "water drop"], "date":"26-10-2023", "time":"12:00", "format":"JPG","MP":"16MP","width":1920,"height":1080,"size":"449 KB","location":None})
+
+# API to get a list of faces
+@app.route('/api/faces/<int:photo_id>', methods=['GET'])
+def get_faces(photo_id):
+    # Logic to get the list of faces from the database or storage
+    # ...
+    if photo_id == 1:
+        return jsonify({"name":"Meet","image":"https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvMjc5LXBhaTE1NzktbmFtLmpwZw.jpg"})
+    elif photo_id == 2:
+        return jsonify({"name":"Shravani","image":"https://storage.googleapis.com/pai-images/38c04881ea8946249365dd45ff67abbf.jpeg"})
+    elif photo_id == 3:
+        return jsonify({"name":"Karan","image":"https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvMjc5LXBhaTE1NzktbmFtLmpwZw.jpg"})
+    else:
+        return jsonify({'error': 'Photo not found'}), 404
+
+# API to get a list of faces in a photo with coordinates
+@app.route('/api/assetface/<int:asset>', methods=['GET'])
+def get_assetface(asset):
+    # Logic to get the list of faces from the database or storage
+    # ...
+    if asset not in (1,2,3):
+        return jsonify({'error': 'Photo not found'}), 404
+    #return the photo
+    return jsonify([
+        {"faceid":1, "x":10,"y":10,"w":100,"h":100},{"faceid":2, "x":200,"y":200,"w":100,"h":100},{"faceid":3, "x":300,"y":300,"w":100,"h":100}])
 
 if __name__ == '__main__':
     app.run()
