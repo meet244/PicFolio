@@ -1,0 +1,15 @@
+{
+    "folder": "E://",
+    "users":{
+        "meet":{
+            "password":"pass@123",
+            "trainFace":true
+            
+        },
+        "mom":{
+            "password":"pass@123",
+            "trainFace":false
+        }
+        
+    }
+}
