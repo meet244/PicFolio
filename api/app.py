@@ -3,7 +3,7 @@ import json
 import sqlite3
 import threading
 
-import background_funs
+# import background_funs
 
 config = None
 
@@ -24,7 +24,7 @@ def background_tasks():
         # check if training is required
         if config['users'][u]['trainFace']:
             # train the model
-            background_funs.trainModel(f"{config['folder']}/{u}/.face/training/")
+            # background_funs.trainModel(f"{config['folder']}/{u}/.face/training/")
             config['users'][u]['trainFace'] = False
             save_config()
 
@@ -42,16 +42,16 @@ def background_tasks():
             asset_path = f"{location}/master/{year}/{month}/{date}/{name}.{format}"
             
             # get the tags
-            tagsThread = threading.Thread(target=background_funs.getTags, args=(asset_path, c))
-            tagsThread.start()
+            # tagsThread = threading.Thread(target=background_funs.getTags, args=(asset_path, c))
+            # tagsThread.start()
 
-            # get the faces
-            background_funs.recogniseFaces(asset_path, c)
+            # # get the faces
+            # background_funs.recogniseFaces(asset_path, c)
 
-            # get the blurry
-            background_funs.getBlurry(asset_path, c)
+            # # get the blurry
+            # background_funs.getBlurry(asset_path, c)
 
-            tagsThread.join()
+            # tagsThread.join()
 
             conn.commit()
         conn.close()
