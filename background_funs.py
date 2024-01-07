@@ -9,6 +9,7 @@ from gradio_client import Client
 import warnings
 import difPy
 import cv2
+import time
 from matplotlib import pyplot as plt
 import logging
 from blur_detection import estimate_blur
@@ -42,10 +43,10 @@ def trainModel(path) -> None:
         silent=True,
     )
 
-
 # Face Recognition
 # sql check required
-def recogniseFaces(image_path, cursor) -> None:
+# name of person should be less than 32 characters
+def recogniseFaces(image_path, image_id, connection) -> None:
     """
     This function loads an image from the provided path, detects faces in the image.
 
@@ -59,7 +60,7 @@ def recogniseFaces(image_path, cursor) -> None:
     unknownPeople = False
     dfs = DeepFace.find(
         img_path = image_path,
-        db_path = r"C:\Users\meet2\Downloads\imgs2", # TODO: Change this to the path where the images are stored
+        db_path = r"data\faces",
         model_name = "Facenet512",
         enforce_detection=False,
         silent=True,
@@ -98,19 +99,22 @@ def recogniseFaces(image_path, cursor) -> None:
             # check if face is already in people list
             if(list(face['facial_area'].values()) not in [i['face'] for i in people]):
                 people.append({'id':str(uuid.uuid4().hex),'face':list(face['facial_area'].values()),'cosine':0.0})
-    
-    # todo Save the faces in sqlite
-    # get the id of image
-    img_n = image_path.split("\\")[-1].split(".")[0]
-    cursor.execute("Select id from assets where name = ?",(img_n,))
-    img_id = cursor.fetchone()[0]
+    print(people)
+    # Save the faces in sqlite
+    cursor = connection.cursor()
     for p in people:
-        cursor.execute("Insert into people values(?,?,?,?,?,?)",(img_id,p['id'],p['face'][0],p['face'][1],p['face'][2],p['face'][3]))
-    # return people
+        face_id = p['id']
+        if(len(p['id']) >= 32):
+            cursor.execute("Insert into faces(name) values(?)",(p['id'],))
+            face_id = cursor.lastrowid
+            # TODO: add face to dataset - in files
+
+        cursor.execute("Insert into asset_faces(asset_id, face_id, x, y, w, h) values(?,?,?,?,?,?)",(int(image_id),int(face_id),int(p['face'][0]),int(p['face'][1]),int(p['face'][2]),int(p['face'][3])))
+
 
 # Blur Detection
 # sql check required
-def tagImage(image_url, c) -> None:
+def tagImage(image_path, image_id, connection) -> None:
     """
     Calls an API to predict the content of an image.
 
@@ -123,30 +127,24 @@ def tagImage(image_url, c) -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         client = Client("https://xinyu1205-recognize-anything.hf.space/")
-        result = client.predict(image_url, fn_index=2)
+        result = client.predict(image_path, fn_index=2)
         result = result[0].split(" | ")
+        print(result)
+        
+        # get cursor
+        cursor = connection.cursor()
+
         for r in result:
             # search tag in tags table and if presen get index else add to table and get index
-            c.execute("Select id from tags where name = ?",(r,))
-            tag_id = c.fetchone()
-            if tag_id is None:
-                c.execute("Insert into tags(name) values(?)",(r,))
-                c.execute("Select id from tags where name = ?",(r,))
-                tag_id = c.fetchone()
-            else:
-                tag_id = tag_id[0]
-            
-            # get the id of image
-            img_n = image_url.split("/")[-1].split(".")[0]
-            c.execute("Select id from assets where name = ?",(img_n,))
-            img_id = c.fetchone()[0]
+            cursor.execute("Select id from tags where tag = ?",(r,))
+            tag_id = cursor.fetchone()[0]
 
             # add to assets_tags table
-            c.execute("Insert into assets_tags values(?,?)",(img_id,tag_id))
+            cursor.execute("Insert into asset_tags values(?,?)",(image_id,tag_id))
 
 # Blur Detection
 # sql check required
-def checkBlur(image_path, c, threshold=100.0) -> bool:
+def checkBlur(image_path, image_id, connection, threshold=100.0) -> None:
     """
     Checks if an image is blurry.
 
@@ -164,10 +162,6 @@ def checkBlur(image_path, c, threshold=100.0) -> bool:
     image = fix_image_size(image)
     blur_map, score, blurry = estimate_blur(image, threshold=threshold)
 
-    # get the id of image
-    img_n = image_path.split("\\")[-1].split(".")[0]
-    c.execute("Select id from assets where name = ?",(img_n,))
-    img_id = c.fetchone()[0]
-
     # edit to assets table
-    c.execute("Update assets set blurry = ? where id = ?",(blurry,img_id))
+    cursor = connection.cursor()
+    cursor.execute("Update assets set blurry = ? where id = ?",(blurry,image_id))
