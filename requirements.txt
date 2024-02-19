@@ -1,7 +1,0 @@
-Flask
-pillow
-deepface
-numpy
-gradio-client==0.7.0
-matplotlib
-difpy
