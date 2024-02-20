@@ -1,0 +1,17 @@
+Flask==2.2.2
+pillow==10.2.0
+deepface==0.0.84
+numpy==1.26.2
+requests==2.31.0
+gradio-client==0.7.0
+matplotlib==3.8.2
+difpy
+moviepy==1.0.3
+qrcode==7.4.2
+waitress==2.1.2
+customtkinter==5.2.2
+ExifRead==3.0.0
+heic2png
+python-dotenv==1.0.0
+google-generativeai==0.3.2
+Werkzeug==2.2.2
