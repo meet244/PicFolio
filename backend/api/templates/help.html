@@ -1,158 +1,369 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>API Documentation</title>
     <style>
-        /* CSS styles for documentation */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
+      /* CSS styles for documentation */
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
 
-        h1 {
-            font-size: 72px;
-            background-image: linear-gradient(45deg, rgb(12, 241, 241), rgb(255, 20, 224));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+      h1 {
+        font-size: 72px;
+        background-image: linear-gradient(
+          45deg,
+          rgb(12, 241, 241),
+          rgb(255, 20, 224)
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
 
-        .endpoint {
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 10px;
-        }
+      .endpoint {
+        margin-bottom: 20px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+      }
 
-        .endpoint h2 {
-            margin-bottom: 5px;
-            color: #555;
-        }
+      .endpoint h2 {
+        margin-bottom: 5px;
+        color: #555;
+      }
 
-        .param {
-            margin-left: 20px;
-            color: #777;
-        }
+      .param {
+        margin-left: 20px;
+        color: #777;
+      }
 
-        .method {
-            font-weight: bold;
-            color: #009688;
-        }
+      .method {
+        font-weight: bold;
+        color: #009688;
+      }
 
-        .desc {
-            margin-top: 5px;
-            margin-bottom: 15px;
-            color: #444;
-        }
+      .desc {
+        margin-top: 5px;
+        margin-bottom: 15px;
+        color: #444;
+      }
 
-        .response {
-            margin-top: 10px;
-            background-color: #f5f5f5;
-            padding: 10px;
-            border-radius: 5px;
-            color: #333;
-        }
+      .response {
+        margin-top: 10px;
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 5px;
+        color: #333;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <h1>API Documentation</h1>
+
+    <!-- API Endpoint: /api/user/create/<string:username> -->
+    <div class="endpoint">
+      <h2>/api/user/create/&lt;username&gt;</h2>
+      <p class="desc">Endpoint to create a user</p>
+      <div class="method">Method: POST</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string) - User's name</li>
+      </ul>
+      <div class="response">
+        Response: JSON - {'message': 'User created successfully'} or {'error':
+        'User already exists'}
+      </div>
+    </div>
+
+    <!-- API Endpoint: /api/user/rename/<string:username>/<string:new_username> -->
+    <div class="endpoint">
+      <h2>/api/user/rename/&lt;username&gt;/&lt;new_username&gt;</h2>
+      <p class="desc">Endpoint to rename a user</p>
+      <div class="method">Method: POST</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string) - Current username</li>
+        <li>new_username (string) - New username</li>
+      </ul>
+      <div class="response">
+        Response: JSON - {'message': 'User renamed successfully'} or {'error':
+        'User not found'} or {'error': 'User already exists'}
+      </div>
+    </div>
 
     <!-- API Endpoint: /api/upload -->
     <div class="endpoint">
-        <h2>/api/upload</h2>
-        <p class="desc">Endpoint to upload photos/videos</p>
-        <div class="method">Method: POST</div>
-        <div class="param">Parameters:</div>
-        <ul>
-            <li>username (string) - User's name</li>
-            <li>asset (file) - Photo or video to upload</li>
-        </ul>
-        <div class="response">Response: JSON - {'message': 'Uploaded successfully'} or {'error': 'Invalid file type'}</div>
+      <h2>/api/upload</h2>
+      <p class="desc">Endpoint to upload photos/videos</p>
+      <div class="method">Method: POST</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string) - User's name</li>
+        <li>asset (file) - Photo or video to upload</li>
+        <li>compress (optional) - Whether to compress the asset</li>
+      </ul>
+      <div class="response">
+        Response: JSON - {'message': 'Uploaded successfully'} or {'error':
+        'Invalid file type'}
+      </div>
     </div>
 
-    <!-- API Endpoint: /api/delete/<int:photo_id> -->
+    <!-- API Endpoint: /api/delete -->
     <div class="endpoint">
-        <h2>/api/delete/&lt;photo_id&gt;</h2>
-        <p class="desc">Endpoint to delete a photo</p>
-        <div class="method">Method: DELETE</div>
-        <div class="param">Parameters:</div>
-        <ul>
-            <li>photo_id (int) - ID of the photo to delete</li>
-        </ul>
-        <div class="response">Response: JSON - {'message': 'Photo deleted successfully'} or {'error': 'Photo not found'}</div>
+      <h2>/api/delete</h2>
+      <p class="desc">Endpoint to delete a photo</p>
+      <div class="method">Method: DELETE</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string) - User's name</li>
+        <li>id (string) - ID(s) of the photo(s) to delete (comma-separated)</li>
+      </ul>
+      <div class="response">
+        Response: JSON - {"success": [list of successfully deleted photo IDs],
+        "failed": [list of failed to delete photo IDs]}
+      </div>
     </div>
 
-    <!-- API Endpoint: /api/preview/<int:photo_id> -->
+    <!-- API Endpoint: /api/preview/<string:username>/<int:photo_id> -->
     <div class="endpoint">
-        <h2>/api/preview/&lt;photo_id&gt;</h2>
-        <p class="desc">Endpoint to get a photo/video preview</p>
-        <div class="method">Method: GET</div>
-        <div class="param">Parameters:</div>
-        <ul>
-            <li>photo_id (int) - ID of the photo/video</li>
-        </ul>
-        <div class="response">Response: Image or video preview</div>
+      <h2>/api/preview/&lt;username&gt;/&lt;photo_id&gt;</h2>
+      <p class="desc">Endpoint to get a photo/video preview</p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string) - User's name</li>
+        <li>photo_id (int) - ID of the photo/video</li>
+      </ul>
+      <div class="response">Response: Image or video preview</div>
     </div>
 
     <!-- API Endpoint: /api/asset/<int:photo_id> -->
     <div class="endpoint">
-        <h2>/api/asset/&lt;photo_id&gt;</h2>
-        <p class="desc">Endpoint to get a photo/video original</p>
-        <div class="method">Method: GET</div>
-        <div class="param">Parameters:</div>
-        <ul>
-            <li>photo_id (int) - ID of the photo/video</li>
-        </ul>
-        <div class="response">Response: Original photo or video</div>
+      <h2>/api/asset/&lt;photo_id&gt;</h2>
+      <p class="desc">Endpoint to get a photo/video original</p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>photo_id (int) - ID of the photo/video</li>
+        <li>username (optional) - User's name</li>
+      </ul>
+      <div class="response">Response: Original photo or video</div>
     </div>
 
-    <!-- API Endpoint: /api/list -->
+    <!-- API Endpoint: /api/list/general -->
     <div class="endpoint">
-        <h2>/api/list</h2>
-        <p class="desc">Endpoint to get a list of photos/videos</p>
-        <div class="method">Method: GET</div>
-        <div class="response">Response: JSON - [{"id": 1, "name": "Photo 1", "date": "2023-10-26"}, {"id": 2, "name": "Photo 2", "date": "2023-10-27"}, {"id": 3, "name": "Photo 3", "date": "2023-10-28"}]</div>
+      <h2>/api/list/general</h2>
+      <p class="desc">Endpoint to get a list of photos/videos</p>
+      <div class="method">Method: POST</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">
+        Response: JSON - {"date": [list of photo IDs on that date]}
+      </div>
     </div>
 
     <!-- API Endpoint: /api/details/<int:photo_id> -->
     <div class="endpoint">
-        <h2>/api/details/&lt;photo_id&gt;</h2>
-        <p class="desc">Endpoint to get asset details</p>
-        <div class="method">Method: GET</div>
-        <div class="param">Parameters:</div>
-        <ul>
-            <li>photo_id (int) - ID of the photo/video</li>
-        </ul>
-        <div class="response">Response: JSON - {"People":[1,2,3], "tags":["blade", "close-up", "dew", "drop", "leaf", "grass", "green", "plant", "rain", "stem", "water", "water drop"], "date":"26-10-2023", "time":"12:00", "format":"JPG","MP":"16MP","width":1920,"height":1080,"size":"449 KB","location":null}</div>
+      <h2>/api/details/&lt;photo_id&gt;</h2>
+      <p class="desc">Endpoint to get asset details</p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>photo_id (int) - ID of the photo/video</li>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">
+        Response: JSON - {"name": "Photo name", "tags": ["tag1", "tag2"],
+        "date": "dd-mm-yyyy", "time": "hh:mm", "format": "file format",
+        "compress": true/false, "fps": "video frame rate", "width": "width in
+        pixels", "height": "height in pixels", "size": "file size", "faces":
+        [list of face IDs], "location": null}
+      </div>
     </div>
-    
-    <!-- API Endpoint: /api/faces/<int:face_id> -->
+
+    <!-- API Endpoint: /api/redate -->
     <div class="endpoint">
-        <h2>/api/faces/&lt;face_id&gt;</h2>
-        <p class="desc">Endpoint to get detail of faces</p>
-        <div class="method">Method: GET</div>
-        <div class="param">Parameters:</div>
-        <ul>
-            <li>photo_id (int) - ID of the photo/video</li>
-        </ul>
-        <div class="response">Response: JSON - [{"name":"Meet","image":"https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvMjc5LXBhaTE1NzktbmFtLmpwZw.jpg"}]</div>
+      <h2>/api/redate</h2>
+      <p class="desc">Endpoint to change date of assets</p>
+      <div class="method">Method: POST</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+        <li>date (string) - New date in YYYY-MM-DD format</li>
+        <li>time (string) - New time in HH:MM format</li>
+        <li>
+          id (string) - ID(s) of the photo(s)/video(s) to change date
+          (comma-separated)
+        </li>
+      </ul>
+      <div class="response">
+        Response: JSON - {'message': 'Date changed successfully'}
+      </div>
     </div>
-    
+
+    <!-- API Endpoint: /api/list/faces -->
+    <div class="endpoint">
+      <h2>/api/list/faces</h2>
+      <p class="desc">Endpoint to get a list of faces</p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">Response: JSON - {face_id: face_name}</div>
+    </div>
+
+    <!-- API Endpoint: /api/list/face/<int:face_id> -->
+    <div class="endpoint">
+      <h2>/api/list/face/&lt;face_id&gt;</h2>
+      <p class="desc">
+        Endpoint to get a list of photos/videos grouped by date for a particular
+        face
+      </p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string) - User's name</li>
+        <li>face_id (int) - ID of the face</li>
+      </ul>
+      <div class="response">
+        Response: JSON - {date: [list of photo/video IDs on that date]}
+      </div>
+    </div>
+
+    <!-- API Endpoint: /api/face/name/<int:face_id> -->
+    <div class="endpoint">
+      <h2>/api/face/name/&lt;face_id&gt;</h2>
+      <p class="desc">Endpoint to get the name of a face</p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">Response: JSON - face_name</div>
+    </div>
+
+    <!-- API Endpoint: /api/face/image/<int:face_id> -->
+    <div class="endpoint">
+      <h2>/api/face/image/&lt;face_id&gt;</h2>
+      <p class="desc">Endpoint to get the image of a face</p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">Response: Image - Face image</div>
+    </div>
+
     <!-- API Endpoint: /api/assetface/<int:asset> -->
     <div class="endpoint">
-        <h2>/api/assetface/&lt;asset&gt;</h2>
-        <p class="desc">Endpoint to get a list of faces in a photo with coordinates</p>
-        <div class="method">Method: GET</div>
-        <div class="param">Parameters:</div>
-        <ul>
-            <li>asset (int) - ID of the photo/video</li>
-        </ul>
-        <div class="response">Response: JSON - [{"faceid":1, "x":10,"y":10,"w":100,"h":100},{"faceid":2, "x":200,"y":200,"w":100,"h":100},{"faceid":3, "x":300,"y":300,"w":100,"h":100}]</div>
+      <h2>/api/assetface/&lt;asset&gt;</h2>
+      <p class="desc">
+        Endpoint to get a list of faces in a photo with coordinates
+      </p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">
+        Response: JSON - [{"faceid": face_id, "x": x, "y": y, "w": width, "h":
+        height}]
+      </div>
     </div>
 
+    <!-- API Endpoint: /api/face/join/<int:main_face_id1>/<int:side_face_id2> -->
+    <div class="endpoint">
+      <h2>/api/face/join/&lt;main_face_id1&gt;/&lt;side_face_id2&gt;</h2>
+      <p class="desc">Endpoint to join two faces</p>
+      <div class="method">Method: POST</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">Response: JSON - "Faces joined successfully"</div>
+    </div>
 
-</body>
+    <!-- API Endpoint: /api/face/delete/<int:face_id> -->
+    <div class="endpoint">
+      <h2>/api/face/delete/&lt;face_id&gt;</h2>
+      <p class="desc">Endpoint to delete a face</p>
+      <div class="method">Method: DELETE</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">Response: JSON - "Face deleted successfully"</div>
+    </div>
 
+    <!-- API Endpoint: /api/face/replace/<int:new_face_id>/<int:asset_id>/<int:x>/<int:y>/<int:w>/<int:h>/ -->
+    <div class="endpoint">
+      <h2>
+        /api/face/replace/&lt;new_face_id&gt;/&lt;asset_id&gt;/&lt;x&gt;/&lt;y&gt;/&lt;w&gt;/&lt;h&gt;/
+      </h2>
+      <p class="desc">Endpoint to replace a face</p>
+      <div class="method">Method: POST</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">Response: JSON - "Faces replaced successfully"</div>
+    </div>
+
+    <!-- API Endpoint: /api/face/rename/<int:face_id>/<string:name> -->
+    <div class="endpoint">
+      <h2>/api/face/rename/&lt;face_id&gt;/&lt;name&gt;</h2>
+      <p class="desc">Endpoint to rename a face</p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">Response: JSON - "Face renamed successfully"</div>
+    </div>
+
+    <!-- API Endpoint: /api/family/move/<int:asset_id> -->
+    <div class="endpoint">
+      <h2>/api/family/move/&lt;asset_id&gt;</h2>
+      <p class="desc">Endpoint to move personal assets to family</p>
+      <div class="method">Method: POST</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">
+        Response: JSON - "Image moved to family successfully"
+      </div>
+    </div>
+
+    <!-- API Endpoint: /api/family/moveback/<int:asset_id> -->
+    <div class="endpoint">
+      <h2>/api/family/moveback/&lt;asset_id&gt;</h2>
+      <p class="desc">Endpoint to move family assets back to personal</p>
+      <div class="method">Method: POST</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">
+        Response: JSON - "Image moved to &lt;username&gt; successfully"
+      </div>
+    </div>
+
+    <!-- API Endpoint: /api/search -->
+    <div class="endpoint">
+      <h2>/api/search</h2>
+      <p class="desc">Endpoint to search the assets</p>
+      <div class="method">Method: GET</div>
+      <div class="param">Parameters:</div>
+      <ul>
+        <li>username (string, optional) - User's name</li>
+      </ul>
+      <div class="response">Response: JSON - List of asset IDs</div>
+    </div>
+  </body>
 </html>
