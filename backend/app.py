@@ -1,12 +1,12 @@
 from flask import Flask, jsonify, request, send_file, render_template
-import flask_cors
+# import flask_cors
 import json
 import sqlite3
 import threading
 import os
 import uuid
 from PIL import Image, ExifTags
-import background_funs
+# import background_funs
 from waitress import serve
 import time
 from datetime import datetime, timedelta
@@ -60,7 +60,7 @@ open_dbs(users[0])
 
 
 app = Flask(__name__)
-flask_cors.CORS(app)
+# flask_cors.CORS(app)
 
 # Error handler for 404 Not Found
 @app.errorhandler(404)
@@ -124,17 +124,17 @@ def upload():
         if request.form['username'] not in users:
             return jsonify({'error': 'User not found'}), 404
         username = request.form['username']
-    except:pass
+    except:
+        return jsonify({'error': 'User not found'}), 404
+    if username == None:
+        return jsonify({'error': 'User not found'}), 404
     print(username)
     asset = request.files['asset']
     compress = None
     try:
         compress = request.form['compress']
     except:pass
-    try:
-        open_dbs(username)
-    except:
-        return jsonify({'error': 'User not found'}), 404
+    open_dbs(username)
     print(asset.filename)
     print(compress)
 
@@ -241,14 +241,13 @@ def preview_asset(username,photo_id):
         return send_file(f'{config["path"]}/{username}/preview/'+str(date_time.year)+'/'+str(date_time.month)+'/'+str(date_time.day)+'/'+str(photo_id)+'.gif', mimetype=f'image/gif')
     
 # get a photo/video original
-@app.route('/api/asset/<int:photo_id>', methods=['GET'])
-def get_asset(photo_id):
+@app.route('/api/asset/<string:username>/<int:photo_id>', methods=['GET'])
+def get_asset(username,photo_id):
     # Logic to get the photo/video from the database or storage
-    username = ""
-    try:
-        username = request.form['username']
-    except:pass
-    print(username)
+    
+    if username not in users:
+        return jsonify('User not found'), 404
+
     open_dbs(username)
 
     cursor.execute("SELECT created,format FROM assets WHERE id = ?", (photo_id,))
@@ -258,11 +257,14 @@ def get_asset(photo_id):
     
     date_time, format = cursor.fetchone()
     # convert date_time to datetime object
-    date_time = datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f')
+    try:
+        date_time = datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f')
+    except:
+        date_time = datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S')
 
     if format == "mp4":
         return send_file(f'{config["path"]}/{username}/master/'+str(date_time.year)+'/'+str(date_time.month)+'/'+str(date_time.day)+'/'+str(photo_id)+'.'+format, mimetype=f'video/{format}')
-    return send_file(f'{config["path"]}/{username}/master/'+str(date_time.year)+'/'+str(date_time.month)+'/'+str(date_time.day)+'/'+str(photo_id)+'.'+format, mimetype=f'image/{format}')
+    return send_file(f'{config["path"]}/{username}/master/'+str(date_time.year)+'/'+str(date_time.month)+'/'+str(date_time.day)+'/'+str(photo_id)+'.png', mimetype=f'image/png')
 
 # get a list of photos/videos
 @app.route('/api/list/general', methods=['POST'])
@@ -271,7 +273,8 @@ def get_list():
     username = ""
     try:
         username = request.form['username']
-    except:pass
+    except:
+        return jsonify('username not found'),404
     print(username)
     open_dbs(username)
 
@@ -338,8 +341,6 @@ def get_details(photo_id):
         "location":None})
     else:
         size = os.path.getsize(f'{config["path"]}/{username}/master/'+str(created.year)+'/'+str(created.month)+'/'+str(created.day)+'/'+str(photo_id)+'.png')
-
-        
 
         if size > 1000000:
             size = str(round(size/1000000, 2))+" MB"
@@ -763,8 +764,10 @@ def search():
     return jsonify(list(set(result)))
 
 def start_this():
-    # threading.Thread(target=run_background_script, daemon=True).start()
+    threading.Thread(target=run_background_script, daemon=True).start()
+    print("Server started")
     serve(app, host="0.0.0.0", port=7251)
+    # app.run(host="0.0.0.0", port=7251, debug=True) # multiple bg threads here
 
 def run_background_script():
         os.system('python background.py')

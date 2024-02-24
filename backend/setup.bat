@@ -88,9 +88,9 @@ echo Visual Studio Code settings and keymap settings setup completed.
 
 echo Installing Python requirements...
 
-pip install -r requirements.txt
+pip install -r req.txt
 if errorlevel 1 (
-    pip install -r requirements.txt --user
+    pip install -r req.txt --user
 )
 
 pip install pillow pillow-avif-plugin --upgrade

@@ -1,0 +1,17 @@
+import os
+
+# read file
+f = ''
+with open("./not need/face-confidence.txt", 'r') as file:
+    f = file.readlines()
+
+cutoff = 0.997
+
+for l in f:
+    l = l.replace("\n", "")
+    if len(l) == 0:
+        continue
+    l2 = float(l.split(" ")[0])
+    if l2>cutoff:
+        print(l)
+

@@ -68,7 +68,6 @@ def bgblur(loc):
     global blurry
     blurry = background_funs.checkBlur(loc)
     
-
 dones = []
 cnt = 0
 while True:
@@ -82,7 +81,8 @@ while True:
 
         print(f"Working on {u}")
         open_db(u)
-        if not os.path.exists(f"{config['path']}/{u}/temp"):os.makedirs(f"{config['path']}/{u}/temp")
+        if not os.path.exists(f"{config['path']}/{u}/temp"):
+            os.makedirs(f"{config['path']}/{u}/temp")
         if(os.listdir(f"{config['path']}/{u}/temp") == []):
             cnt+=1
             continue
@@ -96,6 +96,13 @@ while True:
             continue
         
         for asset in os.listdir(f'{config["path"]}/{u}/temp'):
+
+            # check is asset is downloading?
+            s = os.path.getsize(f"{config['path']}/{u}/temp/"+asset)
+            time.sleep(1)
+            if os.path.getsize(f"{config['path']}/{u}/temp/"+asset) < s:
+                print("File is still downloading") 
+                continue 
             
             img_typ = asset.rsplit('.')[-1]
 
@@ -164,7 +171,7 @@ while True:
                 # Get year month date from video created exif data
                 cursor.execute("SELECT created, compress FROM assets WHERE id = ?", (vid_id,))
                 result = cursor.fetchone()
-                print("datetime = ", result) # todo: remove
+                # print("datetime = ", result)
                 if result is not None:
                     date_time = result[0]
                     compress = result[1]
@@ -269,16 +276,25 @@ while True:
                         path = os.path.join(f"{config['path']}/{u}/data/training", str(face_id), str(image_id)+str(face_id)+str(p['face'][0])+"-unprocessed.jpg")
                         # make directory if not present
                         os.makedirs(os.path.dirname(path), exist_ok=True)
-                        # Crop the image
-                        w = round(p['face'][2]*0.25)
-                        h = round(p['face'][3]*0.25)
+                        # # Crop the image
+                        # new_coords = p["face"].copy()
+                        # new_coords[0] -= new_coords[2]*0.4  # Moving X to left by 40% width
+                        # new_coords[2] *= 1.8  # Increasing width by 80%
+                        # new_coords[1] -= new_coords[3]*0.4  # Moving Y to top by 40% height
+                        
+                        
+
+
+                        print(p['face'])
+                        w = round(p['face'][2]*0.4)
+                        h = round(p['face'][3]*0.4)
                         image = cv2.imread(f"{config['path']}/{u}/temp/{asset}")
                         height, width, _ = image.shape
                         # Calculate the cropping boundaries
-                        x1 = max(p['face'][0] - h, 0)
-                        y1 = max(p['face'][1] - w, 0)
-                        x2 = min(p['face'][0] + p['face'][2] + h, width)
-                        y2 = min(p['face'][1] + p['face'][3] + w, height)
+                        x1 = max(p['face'][0] - w, 0)
+                        y1 = max(p['face'][1] - h, 0)
+                        x2 = min(p['face'][0] + p['face'][2] + w, width)
+                        y2 = min(p['face'][1] + p['face'][3] + h, height)
                         # Crop the image within the boundaries
                         cropped_image = image[y1:y2, x1:x2]
                         cv2.imwrite(path, cropped_image)
@@ -325,6 +341,10 @@ while True:
                 connection.commit()
 
                 # Get compress from database
+                # TODO:
+                #     compress = cursor.fetchone()[0]
+                #                ~~~~~~~~~~~~~~~~~^^^
+                # TypeError: 'NoneType' object is not subscriptable
                 cursor.execute("SELECT compress FROM assets WHERE id = ?", (image_id,))
                 compress = cursor.fetchone()[0]
 

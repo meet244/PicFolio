@@ -24,6 +24,7 @@ import shutil
 from moviepy.editor import VideoFileClip
 import cv2
 import imageio
+import os
 
 
 # Training Face Recognition Model
@@ -64,7 +65,15 @@ def trainModel(path) -> None:
                     # cv2.imshow("face", cv2.imread(os.path.join(path,dir, file))[y:y+h, x:x+w])
                     # cv2.waitKey(0)
                 except Exception as e:
+                    print("-------------------")
+                    e = str(e).replace("Face could not be detected in ", "").split(".Please")[0]
                     print(e) 
+                    print("-------------------")
+                    # count no of faces in training
+                    count = os.listdir(os.path.join(path, dir))
+                    if(len(count) > 1):
+                        # remove the unprocessed image
+                        os.remove(os.path.join(path,dir, file))
 
     # Delete previous model
     try:
@@ -79,7 +88,7 @@ def trainModel(path) -> None:
             img_path = np.zeros((100, 100, 3), dtype=np.uint8),
             db_path = path, 
             model_name = "Facenet512",
-            # detector_backend=b,
+            # detector_backend='retinaface',
             enforce_detection=False,
             # silent=True,
         )
@@ -159,7 +168,7 @@ def recogniseFaces(image_path, username, configPath, isVideo = False) -> bool:
             )
         for face in faces:
             # check if face is already in people list
-            if(face['confidence'] < 0.9):continue
+            if(face['confidence'] < 0.997):continue
             if(list(face['facial_area'].values()) not in [i['face'] for i in people]):
                 people.append({'id':str(uuid.uuid4().hex),'face':list(face['facial_area'].values()),'cosine':0.0})
     print(people)
@@ -421,19 +430,20 @@ def saveVideo(video_loc, name, format, compress, mainPath, previewPath, year, mo
         output_video.release()
 
         # Get the audio from the original video
-        audio_clip = VideoFileClip(video_loc).audio
+        audio_c = VideoFileClip(video_loc)
+        audio_clip = audio_c.audio
 
         # Write the compressed video frames with audio
         print(t_file)
         compressed_video = VideoFileClip(t_file)
         compressed_video = compressed_video.set_audio(audio_clip)
         compressed_video.write_videofile(os.path.join(mainPath, str(year), str(month), str(date), name) + "."+format, codec='libx264', audio_codec='aac')
-        try:audio_clip.close()
-        except:pass
-        try:compressed_video.close()
-        except:pass
 
-        # Remove the temporary file
+        video_capture.release()
+        output_video.release()
+        compressed_video.close()
+        audio_c.close()
+        
         os.remove(t_file)
 
     else:
@@ -444,15 +454,14 @@ def saveVideo(video_loc, name, format, compress, mainPath, previewPath, year, mo
     os.makedirs(os.path.join(previewPath, str(year), str(month), str(date)), exist_ok=True)
     op = os.path.join(previewPath, str(year), str(month), str(date), name) + ".mp4"
 
-    convert_video_to_gif(os.path.join(mainPath, str(year), str(month), str(date), name) + "."+format, op, previewPath, year, month, date)
+    convert_video_to_short(os.path.join(mainPath, str(year), str(month), str(date), name) + "."+format, op, previewPath, year, month, date)
     print(f"Video saved to {os.path.join(mainPath, str(year), str(month), str(date), name) + '.' + format}")
 
-    # remove video from temp
     os.remove(video_loc)
 
 # Similar Images at duplicates.py
     
-def convert_video_to_gif(input_video_path, output_path, previewPath, year, month, date):
+def convert_video_to_short(input_video_path, output_path, previewPath, year, month, date):
     # Read video
     cap = cv2.VideoCapture(input_video_path)
 
@@ -494,7 +503,7 @@ def convert_video_to_gif(input_video_path, output_path, previewPath, year, month
     frames_to_keep = int(fps * 10)
 
     # Create VideoWriter object for trimmed video
-    trimmed_video_writer = cv2.VideoWriter(output_path), cv2.VideoWriter_fourcc(*'mp4v'), fps, (new_width, new_height)
+    trimmed_video_writer = cv2.VideoWriter(output_path, cv2.VideoWriter.fourcc(*'mp4v'), fps, (new_width, new_height))
 
     # Read and write frames for the first 10 seconds
     for i in range(frames_to_keep):
