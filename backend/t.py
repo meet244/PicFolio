@@ -1,19 +1,23 @@
 import os
-import requests
-from deepface import DeepFace
+import sqlite3
+# from deepface import DeepFace
 
 
-DeepFace.stream(
-    model_name = "Facenet512",
-    db_path = r"F:\Picfolio\meet244\data\training"
-    )
+import sqlite3
 
-exit()
+# Connect to the database
+conn = sqlite3.connect(r'E:\Picfolio\meet244\data.db')
+cursor = conn.cursor()
 
-for d in os.listdir(r'D:\Picfolio\meet244\data\training'):
-    if 'pkl' in d:
-        continue
-    unpro = 0
-    for t in os.listdir(fr'D:\Picfolio\meet244\data\training\{d}'):
-        if 'unprocessed' in t:
-            os.remove(fr'D:\Picfolio\meet244\data\training\{d}\{t}')
+# Define the asset_id and tag_id
+asset_id = 338
+tag_id = 3562
+
+# Insert into the asset_tags table
+cursor.execute("INSERT INTO asset_tags (asset_id, tag_id) VALUES (?, ?)", (asset_id, tag_id))
+
+# Commit the transaction
+conn.commit()
+
+# Close the connection
+conn.close()

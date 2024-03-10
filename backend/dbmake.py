@@ -34,6 +34,7 @@ cursor.execute('''CREATE TABLE assets
             blurry INTEGER DEFAULT NULL, 
             deleted DATE DEFAULT 0 NOT NULL, 
             compress INTEGER DEFAULT NULL,
+            liked INTEGER DEFAULT NULL,
             owner TEXT DEFAULT NULL)''')
 
 # create tags table
