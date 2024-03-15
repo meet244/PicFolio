@@ -79,7 +79,6 @@ cursor.execute('''CREATE TABLE duplicates
 # Create table album
 cursor.execute('''CREATE TABLE album
             (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            uuid TEXT NOT NULL UNIQUE,
             name TEXT NOT NULL,
             cover INTEGER DEFAULT NULL,
             start DATE DEFAULT NULL,

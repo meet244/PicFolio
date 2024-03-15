@@ -95,9 +95,3 @@ class _BinScreenState extends State<BinScreen> {
     );
   }
 }
-
-void main() {
-  runApp(
-    BinScreen("192.168.0.107"),
-  );
-}

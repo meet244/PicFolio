@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(MaterialApp(
-    home: SettingsPage(),
-  ));
-}
-
 class SettingsPage extends StatefulWidget {
+  final String ipAddress;
+
+  const SettingsPage(this.ipAddress, {super.key});
+
   @override
   _SettingsPageState createState() => _SettingsPageState();
 }

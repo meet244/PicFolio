@@ -19,7 +19,10 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from moviepy.editor import VideoFileClip
 import gemini
+import nltk
+from nltk.corpus import wordnet as wn
 
+nltk.download('wordnet')
 load_dotenv()
 
 # LOAD GEMINI API
@@ -189,6 +192,7 @@ def upload():
 # delete a photo
 @app.route('/api/delete/<string:username>/<string:ids>', methods=['DELETE'])
 def delete_photo(username, ids):
+    # return jsonify([])
     # Logic to delete the photo from the database or storage (master and preview)
     if username not in users:
         return jsonify('User not found'), 404
@@ -619,8 +623,34 @@ def get_liked(username, asset_id):
     liked = cursor.fetchone()[0] if cursor.fetchone() else False
     return jsonify(liked)
 
+@app.route('/api/list/duplicate', methods=['POST'])
+def get_duplicates():
+    # Logic to get the list of photos/videos from the database or storage
+    username = ""
+    try:
+        username = request.form['username']
+    except:
+        return jsonify('username not found'),404
+    
+    if username not in users:
+        return jsonify('User not found'), 404
 
+    open_dbs(username)
 
+    cursor.execute("SELECT d.asset_id, d.asset_id2, DATE(a.created) FROM duplicates d JOIN assets a ON d.asset_id = a.id WHERE a.deleted = 0")
+
+    # check if the photo exists
+    if cursor.rowcount == 0:
+        return jsonify('Photo not found'), 404
+
+    result = cursor.fetchall()
+    formatted_result = []
+    for r in result:
+        asset_id, asset_id2, created = r
+        formatted_result.append([created, asset_id, asset_id2])
+
+    return jsonify(formatted_result)
+    
 # --------------- CURD FACES APIS ---------------
 
 # get a list of faces
@@ -826,6 +856,135 @@ def rename_face(username, face_id, name):
 
 
 
+# -------------------- AUTO ALBUMS --------------------
+
+# Get a list of auto albums
+@app.route('/api/list/autoalbums', methods=['POST'])
+def get_list_autoalbums():
+    # Logic to get the list of auto albums from the database or storage
+
+    username = ""
+    try:
+        username = request.form['username']
+    except:
+        return jsonify('username not found'),404
+    print(username)
+    open_dbs(username)
+
+    docums = []
+
+    book = [513,514,515,518,519,2808,2954,3030]
+    id = [2201,2202, 649,739]
+    note = [268, 2807, 2808, 2809, 2810]
+    recipemenu = [3327, 2623]
+    text = [2462, 4129, 1362]
+    screenshot = [3562]
+
+    cursor.execute("SELECT * FROM asset_tags WHERE tag_id IN ({})".format(','.join('?' for _ in book)), book)
+    if cursor.fetchone() != None:
+        docums.append("Books")
+
+    cursor.execute("SELECT * FROM asset_tags WHERE tag_id IN ({})".format(','.join('?' for _ in id)), id)
+    if cursor.fetchone() != None:
+        docums.append("ID Cards")
+
+    cursor.execute("SELECT * FROM asset_tags WHERE tag_id IN ({})".format(','.join('?' for _ in note)), note)
+    if cursor.fetchone() != None:
+        docums.append("Note")
+
+    cursor.execute("SELECT * FROM asset_tags WHERE tag_id IN ({})".format(','.join('?' for _ in recipemenu)), recipemenu)
+    if cursor.fetchone() != None:
+        docums.append("Recipe & Menu")
+
+    cursor.execute("SELECT * FROM asset_tags WHERE tag_id IN ({})".format(','.join('?' for _ in text)), text)
+    if cursor.fetchone() != None:
+        docums.append("Text")
+    
+    cursor.execute("SELECT * FROM asset_tags WHERE tag_id IN ({})".format(','.join('?' for _ in screenshot)), screenshot)
+    if cursor.fetchone() != None:
+        docums.append("Screenshots")
+
+    Places = ["People and children", "Places", "Things", "Events", "Documents", "Screenshots", "Selfie", "Videos"]
+
+    cursor.execute("""
+SELECT t.tag, COUNT(*) AS count
+FROM asset_tags AS at
+JOIN tags AS t ON at.tag_id = t.id
+JOIN assets AS a ON at.asset_id = a.id AND a.deleted = 0
+GROUP BY at.tag_id
+ORDER BY count DESC 
+LIMIT 25;
+""")
+    Things = []
+    for row in cursor.fetchall():
+        if len(Things) >= 10:break
+        if not is_verb(row[0]):
+            Things.append(row[0].capitalize())
+    print(Things)
+
+
+    return jsonify({"Places":Places, "Things":Things, "Documents":docums})
+    
+
+
+    cursor.execute("SELECT id,name FROM auto_albums")
+    # check if the photo exists
+    if cursor.rowcount == 0:
+        return jsonify('Auto albums not found'), 404
+    result = cursor.fetchall()
+    formatted_result = {row[0]: row[1] for row in result}
+    return jsonify(formatted_result)
+
+def is_verb(word):
+    synsets = wn.synsets(word)
+    for synset in synsets:
+        if synset.pos() == 'v':  # 'v' denotes verb
+            return True
+    return False
+
+# get images of auto albums
+@app.route('/api/autoalbum/<string:username>/<string:auto_album_name>', methods=['GET'])
+def get_autoalbum(username, auto_album_name:str):
+    # Logic to get the list of photos/videos from the database or storage for a particular auto album
+    if username not in users:
+        return jsonify('User not found'), 404
+    open_dbs(username)
+
+    tags = []
+    if auto_album_name == "Books":
+        tags = [513,514,515,518,519,2808,2954,3030]
+    elif auto_album_name == "ID Cards":
+        tags = [2201,2202, 649,739]
+    elif auto_album_name == "Note":
+        tags = [268, 2807, 2808, 2809, 2810]
+    elif auto_album_name == "Recipe & Menu":
+        tags = [3327, 2623]
+    elif auto_album_name == "Text":
+        tags = [2462, 4129, 1362]
+    elif auto_album_name == "Screenshots":
+        tags = [3562]
+    else:
+        # get tagid of the auto_album_name
+        cursor.execute("SELECT id FROM tags WHERE tag = ?", (auto_album_name.lower(),))
+        tags = [row[0] for row in cursor.fetchall()]
+
+    cursor.execute("SELECT asset_tags.asset_id, assets.created FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 ORDER BY assets.created ASC".format(','.join('?' for _ in tags)), tags)
+
+    # check if the photo exists
+    result = cursor.fetchall()
+    if result == None or len(result) == 0:
+        return jsonify('Photo not found'), 404
+    id, created = random.choice(result)
+    try:
+        date_time = datetime.strptime(created, '%Y-%m-%d %H:%M:%S.%f')
+    except:
+        date_time = datetime.strptime(created, '%Y-%m-%d %H:%M:%S')
+    
+    return send_file(f'{config["path"]}/{username}/preview/'+str(date_time.year)+'/'+str(date_time.month)+'/'+str(date_time.day)+'/'+str(id)+'.webp', mimetype=f'image/webp')
+    
+    return send_file(fr'E:\Picfolio\meet244\preview\2021\12\21\130.webp', mimetype=f'image/webp')
+
+
 # --------------- FAMILY MOVE IN / OUT ---------------
 
 # Move personal assets to family
@@ -932,6 +1091,7 @@ def search():
     except:
         return jsonify('query not found'),404
     open_dbs(username)
+    query = query.lower()
     # Logic to search the assets
     if query == "":
         return jsonify({})
@@ -950,7 +1110,7 @@ def search():
             return jsonify(grouped_result)
         except:
             return jsonify({})   
-    elif query == "screenshot":
+    elif query == "screenshot" or query == "screenshots":
         try:
             cursor.execute("SELECT assets.id AS asset_id, assets.created FROM asset_tags AS at JOIN assets ON at.asset_id = assets.id WHERE at.tag_id = 3562 AND assets.deleted = 0")
             result = cursor.fetchall()
@@ -981,7 +1141,94 @@ def search():
         except Exception as e:
             print(e)
             return jsonify({})
-    
+
+    #Auto Albums
+    elif query == "text":
+        try:
+            tags = [2462, 4129, 1362]
+            cursor.execute("SELECT asset_tags.asset_id, assets.created FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 ORDER BY assets.created ASC".format(','.join('?' for _ in tags)), tags)
+            result = cursor.fetchall()
+            grouped_result = {}
+            for row in result:
+                created_date = row[1].split()[0]
+                asset_id = row[0]
+                if created_date in grouped_result:
+                    grouped_result[created_date].append(asset_id)
+                else:
+                    grouped_result[created_date] = [asset_id]
+            return jsonify(grouped_result)
+        except:
+            return jsonify({})
+    elif query == "recipe & menu":
+        try:
+            tags = [3327, 2623]
+            cursor.execute("SELECT asset_tags.asset_id, assets.created FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 ORDER BY assets.created ASC".format(','.join('?' for _ in tags)), tags)
+            result = cursor.fetchall()
+            grouped_result = {}
+            for row in result:
+                created_date = row[1].split()[0]
+                asset_id = row[0]
+                if created_date in grouped_result:
+                    grouped_result[created_date].append(asset_id)
+                else:
+                    grouped_result[created_date] = [asset_id]
+            return jsonify(grouped_result)
+        except:
+            return jsonify({})
+    elif query == "note":
+        try:
+            tags = [268, 2807, 2808, 2809, 2810]
+            cursor.execute("SELECT asset_tags.asset_id, assets.created FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 ORDER BY assets.created ASC".format(','.join('?' for _ in tags)), tags)
+            result = cursor.fetchall()
+            grouped_result = {}
+            for row in result:
+                created_date = row[1].split()[0]
+                asset_id = row[0]
+                if created_date in grouped_result:
+                    grouped_result[created_date].append(asset_id)
+                else:
+                    grouped_result[created_date] = [asset_id]
+            return jsonify(grouped_result)
+        except:
+            return jsonify({})
+    elif query == "id cards":
+        try:
+            tags = [2201,2202, 649,739]
+            cursor.execute("SELECT asset_tags.asset_id, assets.created FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 ORDER BY assets.created ASC".format(','.join('?' for _ in tags)), tags)
+            result = cursor.fetchall()
+            grouped_result = {}
+            for row in result:
+                created_date = row[1].split()[0]
+                asset_id = row[0]
+                if created_date in grouped_result:
+                    grouped_result[created_date].append(asset_id)
+                else:
+                    grouped_result[created_date] = [asset_id]
+            return jsonify(grouped_result)
+        except:
+            return jsonify({})
+    elif query == "books":
+        try:
+            tags = [513,514,515,518,519,2808,2954,3030]
+            cursor.execute("SELECT asset_tags.asset_id, assets.created FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 ORDER BY assets.created ASC".format(','.join('?' for _ in tags)), tags)
+            result = cursor.fetchall()
+            grouped_result = {}
+            for row in result:
+                created_date = row[1].split()[0]
+                asset_id = row[0]
+                if created_date in grouped_result:
+                    grouped_result[created_date].append(asset_id)
+                else:
+                    grouped_result[created_date] = [asset_id]
+            return jsonify(grouped_result)
+        except:
+            return jsonify({})
+        
+        # Single Person
+
+        # Single Tags
+
+
     isOnly = False
     if 'only' in query:
         query = query.replace('only', '').strip()

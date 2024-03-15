@@ -127,12 +127,12 @@ if errorlevel 1 (
     echo Python extension is already installed.
 )
 
-code --list-extensions | findstr /C:"GitHub.copilot" > nul
-if errorlevel 1 (
-    code --install-extension GitHub.copilot
-) else (
-    echo GitHub Copilot extension is already installed.
-)
+@REM code --list-extensions | findstr /C:"GitHub.copilot" > nul
+@REM if errorlevel 1 (
+@REM     code --install-extension GitHub.copilot
+@REM ) else (
+@REM     echo GitHub Copilot extension is already installed.
+@REM )
 
 echo Visual Studio Code extensions installation completed.
 
@@ -141,11 +141,15 @@ echo Opening Visual Studio Code...
 REM Check if the drive exists
 IF EXIST "F:\Photoz\" (
     code "F:\Photoz"
-    start F:\Photoz
+    code "E:\app_photoz"
 ) 
 IF EXIST "E:\Photoz\" (
     code "E:\Photoz"
-    start F:\Photoz
+    code "E:\app_photoz"
+)
+IF EXIST "G:\Photoz\" (
+    code "G:\Photoz"
+    code "G:\app_photoz"
 )
 start https://notepad.pw/picfolio
 

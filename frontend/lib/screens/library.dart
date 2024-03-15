@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:photoz/screens/bin.dart';
+import 'package:photoz/screens/duplicate.dart';
 import 'package:photoz/screens/favourite.dart';
 
 class Library extends StatelessWidget {
@@ -77,19 +78,9 @@ class Library extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                               builder: (context) =>
-                                  FavouritesScreen(ip, query: "screenshot")),
+                                  Duplicates(ip:ip)),
                         )
                       }),
-              // TransparentIconButton(
-              //     icon: Icons.delete_outline,
-              //     text: 'Bin',
-              //     onPressed: () => {
-              //           Navigator.push(
-              //             context,
-              //             MaterialPageRoute(
-              //                 builder: (context) => BinScreen(ip)),
-              //           )
-              //         }),
             ],
           ),
           const Padding(
@@ -132,7 +123,7 @@ class TransparentIconButton extends StatelessWidget {
                 BorderRadius.circular(12), // Adjust the corner radius here
           ),
           // shadowColor: Colors.transparent, // Remove shadow
-          padding: EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
               horizontal: 15, vertical: 22), // Remove padding
           alignment: Alignment.centerLeft, // Align content to the left
         ),

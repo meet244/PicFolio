@@ -1,3 +1,14 @@
-E:\Photos\Meet (Self)\college\2021-2022\Festum
-IMAGE - DONE
-VIDEO - PENDING
+- IMAGE - DONE (Tagging not functioning)
+- VIDEO - PENDING (convert to gif pending) + video support on app
+
+- make albums on the app
+- albums #backend
+
+- places and things in #backend
+- places and things #frontend
+
+- family folder
+- family face matching #backend
+
++ DUPLICATES = delete option 
++ selection remaing

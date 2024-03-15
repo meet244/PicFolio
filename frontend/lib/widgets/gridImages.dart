@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photoz/widgets/face.dart';
 
-
 // ignore: must_be_immutable
 class ImageGridView extends StatefulWidget {
   final Map<String, List<int>> images;
@@ -104,8 +103,6 @@ class _ImageGridViewState extends State<ImageGridView> {
     });
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     if (widget.images.isEmpty) {
@@ -151,15 +148,22 @@ class _ImageGridViewState extends State<ImageGridView> {
                           } else {
                             // Open the image normally
                             Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ImageDetailScreen(
-                                  widget.ip,
-                                  imageId,
-                                  date: entry.key.replaceAll('-', '/'),
-                                ),
-                              ),
-                            );
+                                context,
+                                widget.isBin
+                                    ? MaterialPageRoute(
+                                        builder: (context) => ImageDetailScreen(
+                                          widget.ip,
+                                          imageId,
+                                          date: null,
+                                        ),
+                                      )
+                                    : MaterialPageRoute(
+                                        builder: (context) => ImageDetailScreen(
+                                          widget.ip,
+                                          imageId,
+                                          date: entry.key.replaceAll('-', '/'),
+                                        ),
+                                      ));
                           }
                         },
                         onLongPress: () {
@@ -200,8 +204,7 @@ class _ImageGridViewState extends State<ImageGridView> {
                           } else if (snapshot.hasData &&
                               snapshot.data!.isNotEmpty) {
                             // Cache the loaded image
-                            loadedImages[imageId] =
-                                snapshot.data as List<int>;
+                            loadedImages[imageId] = snapshot.data as List<int>;
                             return GestureDetector(
                               onTap: () {
                                 if (_selectedImages.isNotEmpty) {
@@ -209,15 +212,25 @@ class _ImageGridViewState extends State<ImageGridView> {
                                 } else {
                                   // Open the image normally
                                   Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ImageDetailScreen(
-                                        widget.ip,
-                                        imageId,
-                                        date: entry.key.replaceAll('-', '/'),
-                                      ),
-                                    ),
-                                  );
+                                      context,
+                                      widget.isBin
+                                          ? MaterialPageRoute(
+                                              builder: (context) =>
+                                                  ImageDetailScreen(
+                                                widget.ip,
+                                                imageId,
+                                                date: null,
+                                              ),
+                                            )
+                                          : MaterialPageRoute(
+                                              builder: (context) =>
+                                                  ImageDetailScreen(
+                                                widget.ip,
+                                                imageId,
+                                                date: entry.key
+                                                    .replaceAll('-', '/'),
+                                              ),
+                                            ));
                                 }
                               },
                               onLongPress: () {
@@ -250,8 +263,7 @@ class _ImageGridViewState extends State<ImageGridView> {
                             return NothingMessage(
                               icon: widget.noImageIcon,
                               mainMessage: widget.mainEmptyMessage,
-                              secondaryMessage:
-                                  widget.secondaryEmptyMessage,
+                              secondaryMessage: widget.secondaryEmptyMessage,
                             );
                           }
                         },
@@ -325,7 +337,6 @@ class _ImageGridViewState extends State<ImageGridView> {
                       Text('Move to Family'),
                     ],
                   ),
-                
                 ],
               ),
             ),
@@ -334,8 +345,6 @@ class _ImageGridViewState extends State<ImageGridView> {
     );
   }
 }
-
-
 
 // class ImageGridView extends StatefulWidget {
 //   final Map<String, List<int>> images;
@@ -593,8 +602,7 @@ class ImageDetailScreen extends StatefulWidget {
   final String ip;
   final String? date;
 
-  ImageDetailScreen(this.ip, this.imageId, {this.date, Key? key})
-      : super(key: key);
+  const ImageDetailScreen(this.ip, this.imageId, {this.date, super.key});
 
   @override
   _ImageDetailScreenState createState() => _ImageDetailScreenState();
@@ -859,10 +867,13 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                                             DetailComponent(
                                               iconData: Icons.event_outlined,
                                               title: DateFormat('d MMM yyyy')
-                                                  .format(DateFormat('dd-MM-yyyy').parse(
-                                                      snapshot.data['date']
-                                                          .toString())),
-                                              subtitle:"${DateFormat('E').format(DateFormat('dd-MM-yyyy').parse(snapshot.data['date'].toString().replaceAll('/', '-')))}, ${snapshot.data['time']}",
+                                                  .format(
+                                                      DateFormat('dd-MM-yyyy')
+                                                          .parse(snapshot
+                                                              .data['date']
+                                                              .toString())),
+                                              subtitle:
+                                                  "${DateFormat('E').format(DateFormat('dd-MM-yyyy').parse(snapshot.data['date'].toString().replaceAll('/', '-')))}, ${snapshot.data['time']}",
                                             ),
                                             DetailComponent(
                                                 iconData: Icons.image_outlined,
@@ -1030,12 +1041,14 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<List<int>> fetchMainImage() async {
     String url;
-    if (widget.date != null) {
+    if (widget.date!= null) {
       url =
           'http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}/${widget.date}';
     } else {
       url = 'http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}';
     }
+    print(url);
+    print(widget.date != null);
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       mainImageBytes = response.bodyBytes;

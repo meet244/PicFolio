@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:photoz/widgets/gridImages.dart';
 
+// ignore: must_be_immutable
 class FavouritesScreen extends StatefulWidget {
   final String ip;
   String query;

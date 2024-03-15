@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 // import 'package:photoz/screens/bin.dart';
 import 'shravani.dart';
+import 'screens/duplicate.dart';
 
 // import 'try.dart';
 
 void main() {
-  // runApp(MyApp());
-
+  // runApp(MaterialApp(
+  //   debugShowCheckedModeBanner: false,
+  //   home: const Duplicates(ip: '127.0.0.1'),
+  // ));
   // runApp(BinScreen("127.0.0.1"));
-  runApp(MyHomePage('192.168.0.106'));
+  runApp(MyHomePage('127.0.0.1'));
 }
 
 // --------------------------------------------------------------------------------------------------------

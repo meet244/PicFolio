@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:photoz/screens/settings.dart';
 import 'dart:convert';
 import 'screens/home_left.dart';
 import 'package:photoz/screens/horizon_face.dart';
@@ -103,69 +104,80 @@ class _MyHomePageState extends State<MyHomePage> {
     // final ThemeData theme = Theme.of(context);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        appBar: AppBar(
-          title: Row(
-            children: [
-              Text("Picfolio"),
-            ],
-          ),
-          actions: <Widget>[
-            GestureDetector(
-              onTap: getimage,
-              child: Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: Icon(
-                    Icons.add,
-                    size: 32.0,
-                  )),
-            ),
-            Padding(
-                padding: EdgeInsets.all(10.0),
-                child: Icon(
-                  Icons.people,
-                  size: 32.0,
-                )),
-            Padding(
-                padding: EdgeInsets.all(10.0),
-                child: Icon(
-                  Icons.account_circle_rounded,
-                  size: 36.0,
-                )),
-          ],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          onTap: (int index) {
-            setState(() {
-              currentPageIndex = index;
-            });
-          },
-          currentIndex: currentPageIndex,
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.photo_outlined),
-              label: 'Photos',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.photo_album_sharp),
-              label: 'Library',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.search),
-              label: 'Search',
-            ),
-          ],
-        ),
-        body: <Widget>[
-          /// Photos page
-          HomeLeft(widget.ip),
+      home: Navigator(
+        // Wrap with Navigator widget
+        onGenerateRoute: (settings) {
+          return MaterialPageRoute(
+            builder: (context) => Scaffold(
+              appBar: AppBar(
+                title: Row(
+                  children: [
+                    Text("Picfolio"),
+                  ],
+                ),
+                actions: <Widget>[
+                  GestureDetector(
+                    onTap: getimage,
+                    child: Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: Icon(
+                          Icons.add,
+                          size: 32.0,
+                        )),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // open settings page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => SettingsPage(widget.ip)),
+                      );
+                    },
+                    child: Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: Icon(
+                          Icons.account_circle_outlined,
+                          size: 32.0,
+                        )),
+                  ),
+                ],
+              ),
+              bottomNavigationBar: BottomNavigationBar(
+                onTap: (int index) {
+                  setState(() {
+                    currentPageIndex = index;
+                  });
+                },
+                currentIndex: currentPageIndex,
+                items: const <BottomNavigationBarItem>[
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.photo_outlined),
+                    label: 'Photos',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.photo_album_sharp),
+                    label: 'Library',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.search),
+                    label: 'Search',
+                  ),
+                ],
+              ),
+              body: <Widget>[
+                /// Photos page
+                HomeLeft(widget.ip),
 
-          /// Notifications page
-          Library(widget.ip),
+                /// Notifications page
+                Library(widget.ip),
 
-          /// Messages page
-          FaceListWidget(widget.ip),
-        ][currentPageIndex],
+                /// Messages page
+                FaceListWidget(widget.ip),
+              ][currentPageIndex],
+            ),
+          );
+        },
       ),
     );
   }
