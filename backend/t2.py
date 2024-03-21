@@ -1,10 +1,15 @@
-
-# book = [513,514,515,518,519,2808,2954,3030]
-# id = [2201,2202, 649,739]
-# note = [268, 2807, 2808, 2809, 2810]
-# recipemenu = [3327, 2623]
-# text = [2462, 4129, 1362]
+import os
+from moviepy.editor import VideoFileClip
 
 
+# code to loop over all files in a directory
+def list_files(startpath):
+    for i in os.listdir(startpath):
+        path = os.path.join(startpath, i)
+        if os.path.isfile(path):
+            if('.mp4' in path):
+                clip = VideoFileClip(path)
+                clip.write_gif(path.replace(".mp4",'.gif'),fps=clip.duration)
 
- docums = ["Books", "ID Cards", "Note", "Recipe & Menu", "Text", "Screenshot"]
+
+list_files(r'E:\Picfolio\meet244\preview\2024\2\15')

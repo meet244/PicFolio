@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -95,12 +97,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
+  Future<void> removeName() async {
+    final response = await http.post(
+        Uri.parse('http://${widget.ip}:7251/api/face/noname'),
+        body: {'username': 'meet244', 'name': widget.userId});
+    if (response.statusCode == 200) {
+      setState(() {
+        // remove name from var
+        name = 'Add a name';
+      });
+    } else {
+      throw Exception('Failed to load name');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        appBar: AppBar(
+        appBar:
+        AppBar(
           title: GestureDetector(
             onTap: () {
               if (name != 'Add a name') {
@@ -120,100 +137,159 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Navigator.pop(context);
             },
           ),
-        ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ClipOval(
-                    child: Image.network(
-                      'http://${widget.ip}:7251/api/face/image/meet244/${widget.userId}',
-                      width: 100.0,
-                      height: 100.0,
-                      fit: BoxFit.cover,
-                    ),
+          actions: [
+            PopupMenuButton<String>(
+              itemBuilder: (BuildContext context) {
+                return [
+                  PopupMenuItem<String>(
+                    value: 'rename',
+                    child: Text('Edit Name'),
                   ),
-                ),
-                const SizedBox(width: 16.0),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        if (name == "Add a name") {
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              String newName = '';
-                              return AlertDialog(
-                                title: Text('Enter Name'),
-                                content: TextField(
-                                  autofocus: true,
-                                  maxLength: 30, // Add maximum length limit
-                                  onChanged: (value) {
-                                    newName = value;
-                                  },
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                    child: Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      if (newName.length > 30) {
-                                        showDialog(
-                                          context: context,
-                                          builder: (BuildContext context) {
-                                            return AlertDialog(
-                                              title: Text('Error'),
-                                              content: Text('Name should be less than 30 characters.'),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                  child: Text('OK'),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        );
-                                      } else {
-                                        Navigator.of(context).pop();
-                                        rename(newName);
-                                      }
-                                    },
-                                    child: Text('Save'),
-                                  ),
-                                ],
-                              );
+                  PopupMenuItem<String>(
+                    value: 'noname',
+                    child: Text('Remove Name'),
+                  ),
+                ];
+              },
+              onSelected: (String value) {
+                // Handle menu item selection
+                if (value == 'rename') {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      String newName = '';
+                      return AlertDialog(
+                        title: Text('Enter Name'),
+                        content: TextField(
+                          autofocus: true,
+                          maxLength: 30, // Add maximum length limit
+                          onChanged: (value) {
+                            newName = value;
+                          },
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
                             },
-                          );
-                        }
-                      },
-                      child: Text(
-                        name,
-                        style: const TextStyle(fontSize: 25.0, fontWeight: FontWeight.bold),
+                            child: Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              if (newName.length >= 30) {
+                                return;
+                              } else {
+                                Navigator.of(context).pop();
+                                rename(newName);
+                              }
+                            },
+                            child: Text('Save'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                  // Do something for Item 1
+                } else if (value == 'noname') {
+                  removeName();
+                }
+              },
+            ),
+          ],
+        ),
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: ClipOval(
+                      child: Image.network(
+                        'http://${widget.ip}:7251/api/face/image/meet244/${widget.userId}',
+                        width: 100.0,
+                        height: 100.0,
+                        fit: BoxFit.cover,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '$cnt photos',
-                      style: const TextStyle(fontSize: 16.0),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 20.0),
-            Expanded( // Add an Expanded widget here
-              child: ImageGridView(
+                  ),
+                  const SizedBox(width: 16.0),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          if (name == "Add a name") {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                String newName = '';
+                                return AlertDialog(
+                                  title: Text('Enter Name'),
+                                  content: TextField(
+                                    autofocus: true,
+                                    maxLength: 30, // Add maximum length limit
+                                    onChanged: (value) {
+                                      newName = value;
+                                    },
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        if (newName.length >= 30) {
+                                          showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return AlertDialog(
+                                                title: Text('Error'),
+                                                content: Text('Name should be less than 30 characters.'),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      Navigator.of(context).pop();
+                                                    },
+                                                    child: Text('OK'),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        } else {
+                                          Navigator.of(context).pop();
+                                          rename(newName);
+                                        }
+                                      },
+                                      child: Text('Save'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          }
+                        },
+                        child: Text(
+                          name,
+                          style: const TextStyle(fontSize: 25.0, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '$cnt photos',
+                        style: const TextStyle(fontSize: 16.0),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20.0),
+              ImageGridView(
                 ip: widget.ip,
                 images: images,
                 gridCount: 3,
@@ -221,8 +297,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 mainEmptyMessage: "No Images Found",
                 secondaryEmptyMessage: "Images will appear here",
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

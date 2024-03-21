@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photoz/screens/favourite.dart';
 
 class SearchScreen extends StatefulWidget {
-  String ip;
-  String searched = '';
-  SearchScreen(this.ip,this.searched, {super.key});
-  
+  final String ip;
+  final String searched;
+  SearchScreen(this.ip, this.searched, {Key? key}) : super(key: key);
+
   @override
   _SearchScreenState createState() => _SearchScreenState();
 }
@@ -14,6 +15,29 @@ class _SearchScreenState extends State<SearchScreen> {
   TextEditingController _controller = TextEditingController();
   FocusNode _focusNode = FocusNode();
   bool _isMicButton = true;
+  List<String> recentSearches = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentSearches();
+  }
+
+  void _loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      recentSearches = prefs.getStringList('recentSearches') ?? [];
+    });
+  }
+
+  void _saveRecentSearch(String query) async {
+    final prefs = await SharedPreferences.getInstance();
+    recentSearches.insert(0, query);
+    if (recentSearches.length > 5) {
+      recentSearches.removeLast();
+    }
+    prefs.setStringList('recentSearches', recentSearches);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +56,6 @@ class _SearchScreenState extends State<SearchScreen> {
           title: TextField(
             autofocus: true,
             focusNode: _focusNode,
-            // controller: TextEditingController()..text = widget.searched,
             controller: _controller,
             decoration: const InputDecoration(
               hintText: 'Search...',
@@ -47,16 +70,14 @@ class _SearchScreenState extends State<SearchScreen> {
               if (text.isEmpty) {
                 return;
               }
-              // todo: save it to local storage
-      
-              // todo: Handle search query - go to result screen
-              Navigator.of(context).push(
+              // Save the search to local storage
+              _saveRecentSearch(text);
+              // Navigate to the result screen
+              Navigator.of(context).pushReplacement(
                 MaterialPageRoute(
-                  builder: (context) => FavouritesScreen(widget.ip, query: text),
+                  builder: (context) => FavouritesScreen(widget.ip, query: text, qtype: 'search'),
                 ),
               );
-              print("Search query: $text");
-              print("IP: ${widget.ip}");
             },
           ),
           actions: [
@@ -76,31 +97,23 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
         ),
         body: ListView(
-          children: [
-            ListTile(
+          children: recentSearches.map((query) {
+            return ListTile(
               leading: Icon(Icons.history),
               title: Padding(
                 padding: const EdgeInsets.only(left: 20),
-                child: Text('Recently typed item'),
+                child: Text(query),
               ),
-            ),
-            ListTile(
-              leading: Icon(Icons.history),
-              title: Padding(
-                padding: const EdgeInsets.only(left: 20),
-                child: Text('Recently typed item'),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.history),
-              title: Padding(
-                padding: const EdgeInsets.only(left: 20),
-                child: Text('Recently typed item'),
-              ),
-            ),
-      
-            // Add more list items for additional history items
-          ],
+              onTap: () {
+                // Navigate to the result screen
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => FavouritesScreen(widget.ip, query: query, qtype: 'search'),
+                  ),
+                );
+              },
+            );
+          }).toList(),
         ),
       ),
     );

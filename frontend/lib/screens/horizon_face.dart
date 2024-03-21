@@ -16,8 +16,8 @@ class FaceListWidget extends StatefulWidget {
 }
 
 class _FaceListWidgetState extends State<FaceListWidget> {
-  late List<String> faces;
-  late Map<String, String> faceNames;
+  List<String> faces  = [];
+  Map<String, String> faceNames = {};
   bool isfaceLoading = true;
   bool isalbumLoading = true;
 
@@ -148,7 +148,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
                     ip: widget.ip,
                     isSquared: true,
                   ),
-                  makename('Places'),
+                  makename('Auto Albums'),
                   makehorizonScroll(autoAlbumsPlace),
                   makename('Documents'),
                   makehorizonScroll(autoAlbumsDocs),
@@ -180,7 +180,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => FavouritesScreen(widget.ip, query:listr[index]),
+                  builder: (context) => FavouritesScreen(widget.ip, query:listr[index], qtype: 'auto albums'),
                 ),
               );
             },

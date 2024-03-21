@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import 'dart:async';
@@ -5,12 +7,14 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photoz/widgets/face.dart';
+import 'package:share_plus/share_plus.dart';
 
 // ignore: must_be_immutable
 class ImageGridView extends StatefulWidget {
-  final Map<String, List<int>> images;
+  Map<String, List<int>> images;
   final int gridCount;
   final String ip;
   final IconData noImageIcon;
@@ -71,12 +75,23 @@ class _ImageGridViewState extends State<ImageGridView> {
     });
   }
 
-  void _onDelete() {
+  Future<void> _onDelete() async {
     // Implement your delete logic here
     print(_selectedImages);
-    setState(() {
-      _selectedImages.clear(); // Clear selected images after sending
-    });
+
+    // Call delete image API here
+    var imgs = _selectedImages.join(',');
+    final response = await http
+        .delete(Uri.parse('http://${widget.ip}:7251/api/delete/meet244/$imgs'));
+    if (response.statusCode == 200) {
+      print('Image deleted');
+      // remove the deleted images from the grid
+      setState(() {
+        _selectedImages.clear();
+      });
+    } else {
+      throw Exception('Failed to delete image');
+    }
   }
 
   void _onAdd() {
@@ -87,9 +102,37 @@ class _ImageGridViewState extends State<ImageGridView> {
     });
   }
 
-  void _editDate() {
+  Future<void> _editDate() async {
     // Implement your edit date logic here
-    print(_selectedImages);
+    // get a date from calendar
+    final DateTime? picked = await showDatePicker(
+        context: context,
+        // initialDate: selectedDate,
+        firstDate: DateTime(2015, 8),
+        lastDate: DateTime(2101));
+    if (picked == null) {
+      return;
+    }
+    var date = (picked.toString().split(" ")[0]);
+    var imgs = _selectedImages.join(',');
+    final response = await http.post(
+      Uri.parse('http://${widget.ip}:7251/api/redate'),
+      body: {
+        'username': 'meet244',
+        'date': date,
+        'id': imgs,
+      },
+    );
+    if (response.statusCode == 200) {
+      print('Dates Updated');
+      setState(() {
+        _selectedImages.clear();
+      });
+      // remove the deleted images from the grid
+    } else {
+      throw Exception('Failed to update date');
+    }
+
     setState(() {
       _selectedImages.clear(); // Clear selected images after sending
     });
@@ -101,6 +144,20 @@ class _ImageGridViewState extends State<ImageGridView> {
     setState(() {
       _selectedImages.clear(); // Clear selected images after sending
     });
+  }
+
+  Future<void> restoreImage() async {
+    var imgs = _selectedImages.join(',');
+    final response = await http
+        .post(Uri.parse('http://${widget.ip}:7251/api/restore/meet244/$imgs'));
+    if (response.statusCode == 200) {
+      print('Image restored');
+      setState(() {
+        _selectedImages.clear();
+      });
+    } else {
+      throw Exception('Failed to restore image');
+    }
   }
 
   @override
@@ -115,6 +172,7 @@ class _ImageGridViewState extends State<ImageGridView> {
     return Stack(
       children: [
         ListView.builder(
+          shrinkWrap: true,
           itemCount: widget.images.length,
           itemBuilder: (context, index) {
             var entry = widget.images.entries.toList()[index];
@@ -275,7 +333,47 @@ class _ImageGridViewState extends State<ImageGridView> {
             );
           },
         ),
-        if (_selectedImages.isNotEmpty)
+        if (_selectedImages.isNotEmpty && widget.isBin)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                ),
+              ),
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Column(
+                    children: [
+                      IconButton(
+                        onPressed: _onDelete,
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                      Text('Delete Premanently'),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      IconButton(
+                        onPressed: restoreImage,
+                        icon: const Icon(Icons.settings_backup_restore_outlined),
+                      ),
+                      Text('Restore'),
+                    ],
+                  ),
+                  
+                ],
+              ),
+            ),
+          ),
+        if (_selectedImages.isNotEmpty && !widget.isBin)
           Positioned(
             bottom: 0,
             left: 0,
@@ -739,7 +837,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                       if (widget.date != null)
                         IconButton(
                           onPressed: () {
-                            // Add share logic here
+                            shareImage();
                           },
                           icon: Icon(Icons.share_outlined, color: Colors.white),
                         ),
@@ -954,6 +1052,33 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     );
   }
 
+  Future<void> shareImage() async {
+    print("sharing");
+    try {
+      final mainImageBytes = await fetchMainImage();
+
+      // Save the main image to a temporary file
+
+      final tempDir = await getTemporaryDirectory();
+
+      final tempFile = File('${tempDir.path}/temp_image.png');
+
+      await tempFile.writeAsBytes(mainImageBytes);
+
+      // Share the image using the share_plus package
+
+      await Share.shareFiles(
+        ['${tempFile.path}'],
+        text: 'I shared this image from PicFolio. Try it out!',
+        subject: 'Image Sharing',
+      );
+    } catch (e) {
+      print('Error sharing image: $e');
+
+      // Handle the error, e.g., show a snackbar or log the error
+    }
+  }
+
   Future<Map<String, dynamic>> fetchDetails(int photoId) async {
     final response = await http.get(
         Uri.parse('http://${widget.ip}:7251/api/details/meet244/$photoId'));
@@ -978,6 +1103,9 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     );
     if (response.statusCode == 200) {
       print('Image Liked/Unliked');
+      setState(() {
+        isliked = !isliked;
+      });
     } else {
       throw Exception('Failed to like image');
     }
@@ -1041,7 +1169,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<List<int>> fetchMainImage() async {
     String url;
-    if (widget.date!= null) {
+    if (widget.date != null) {
       url =
           'http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}/${widget.date}';
     } else {

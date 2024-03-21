@@ -518,22 +518,22 @@ def convert_video_to_short(input_video_path, output_path, previewPath, year, mon
     # # Release VideoCapture object for the resized video
     resized_cap.release()
 
-    # # Create GIF from trimmed video using OpenCV
-    # # gif_frames = []
-    # trimmed_cap = cv2.VideoCapture(output_path)
-    # for _ in range(frames_to_keep):
-    #     ret, frame = trimmed_cap.read()
-    #     if not ret:
-    #         break
-    #     # Convert BGR to RGB
-    #     # frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    #     # gif_frames.append(frame_rgb)
+    # Create GIF from trimmed video using OpenCV
+    gif_frames = []
+    trimmed_cap = cv2.VideoCapture(output_path)
+    for _ in range(frames_to_keep):
+        ret, frame = trimmed_cap.read()
+        if not ret:
+            break
+        # Convert BGR to RGB
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        gif_frames.append(frame_rgb)
 
-    # # Save GIF using imageio with infinite loop
-    # # imageio.mimsave(output_path, gif_frames, fps=fps, loop=0)
+    # Save GIF using imageio with infinite loop
+    imageio.mimsave(output_path, gif_frames, fps=fps, loop=0)
 
-    # # Release VideoCapture object for the trimmed video
-    # trimmed_cap.release()
+    # Release VideoCapture object for the trimmed video
+    trimmed_cap.release()
 
     # Clean up temporary files
     cv2.destroyAllWindows()

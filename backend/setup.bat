@@ -88,9 +88,9 @@ echo Visual Studio Code settings and keymap settings setup completed.
 
 echo Installing Python requirements...
 
-pip install -r req.txt
+pip install -r "%~1\Photoz\req.txt"
 if errorlevel 1 (
-    pip install -r req.txt --user
+    pip install -r "%~1\Photoz\req.txt" --user
 )
 
 pip install pillow pillow-avif-plugin --upgrade
@@ -139,18 +139,10 @@ echo Visual Studio Code extensions installation completed.
 echo Opening Visual Studio Code...
 
 REM Check if the drive exists
-IF EXIST "F:\Photoz\" (
-    code "F:\Photoz"
-    code "E:\app_photoz"
-) 
-IF EXIST "E:\Photoz\" (
-    code "E:\Photoz"
-    code "E:\app_photoz"
-)
-IF EXIST "G:\Photoz\" (
-    code "G:\Photoz"
-    code "G:\app_photoz"
-)
+
+code "%~1\app_photoz"
+code "%~1\Photoz"
+
 start https://notepad.pw/picfolio
 
 echo Visual Studio Code opened.

@@ -28,7 +28,6 @@ class _DuplicatesScreenState extends State<Duplicates> {
   }
 
   void toggleSelection(int imageId) {
-    print("toggling $imageId");
     if (selectedImages.contains(imageId)) {
       setState(() {
         selectedImages.remove(imageId);
@@ -53,7 +52,6 @@ class _DuplicatesScreenState extends State<Duplicates> {
       List<List<dynamic>> data2 = [];
       for (dynamic data in responseData) {
         data2.add(data);
-        // print(data);
       }
       // Iterate over the responseData list using a for loop
       setState(() {
@@ -92,18 +90,22 @@ class _DuplicatesScreenState extends State<Duplicates> {
           },
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.done_all_outlined),
-            onPressed: () {
-              List<int> s = [];
-              for (int i = 0; i < images.length; i++) {
-                s.add(images[i][2] as int);
+          if (selectedImages.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.done_all_outlined),
+              onPressed: () {
+                List<int> s = [];
+                for (int i = 0; i < images.length; i++) {
+                  s.add(images[i][2] as int);
+                }
+                if (selectedImages == s) {
+                  s = [];
+                }
                 setState(() {
                   selectedImages = s;
                 });
-              }
-            },
-          ),
+              },
+            ),
         ],
       ),
       body: images.isNotEmpty
@@ -294,8 +296,8 @@ class _DuplicatesScreenState extends State<Duplicates> {
                               // remove all duplicates from the list
                               selectedImages = selectedImages.toSet().toList();
                               deleteImage(selectedImages
-                                  .map((e) => e.toString())
-                                  .toList())
+                                      .map((e) => e.toString())
+                                      .toList())
                                   .then((bool success) {
                                 // Handle the result here
                                 if (success) {
@@ -306,7 +308,7 @@ class _DuplicatesScreenState extends State<Duplicates> {
                                   // Delete operation failed
                                   print('Failed to delete image');
                                 }
-                              });                              
+                              });
                               // Navigator.pop(context);
                             },
                       backgroundColor: Colors.red,

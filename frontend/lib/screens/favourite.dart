@@ -7,8 +7,10 @@ import 'package:photoz/widgets/gridImages.dart';
 class FavouritesScreen extends StatefulWidget {
   final String ip;
   String query;
+  String qtype;
 
-  FavouritesScreen(this.ip, {this.query = 'favourite'});
+  FavouritesScreen(this.ip,
+      {super.key, this.query = '', this.qtype = 'search'});
 
   @override
   _FavouritesScreenState createState() => _FavouritesScreenState();
@@ -16,6 +18,7 @@ class FavouritesScreen extends StatefulWidget {
 
 class _FavouritesScreenState extends State<FavouritesScreen> {
   Map<String, List<int>> images = {};
+  bool loading = true;
 
   @override
   void initState() {
@@ -29,7 +32,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
       body: {
         'username': 'meet244',
         'query': widget.query,
-        // 'query': 'screenshot',
+        'type': widget.qtype,
       },
     );
     if (response.statusCode == 200) {
@@ -49,6 +52,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
             key, (value as List<dynamic>).map((e) => e as int).toList());
       });
       setState(() {
+        loading = false;
         images = data2;
       });
     } else {
@@ -68,44 +72,49 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
           },
         ),
       ),
-      body: widget.query.toLowerCase() == 'favourite'
-          ? ImageGridView(
-              ip: widget.ip,
-              images: images,
-              gridCount: 3,
-              noImageIcon: Icons.heart_broken_outlined,
-              mainEmptyMessage: "No Favourites",
-              secondaryEmptyMessage:
-                  "❤ images/videos to add them to Favourites",
+      body: loading
+          ? const Center(
+              child: CircularProgressIndicator(),
             )
-          : widget.query.toLowerCase() == 'screenshot'
+          : widget.query.toLowerCase() == 'favourite'
               ? ImageGridView(
                   ip: widget.ip,
                   images: images,
                   gridCount: 3,
-                  noImageIcon: Icons.screenshot_outlined,
-                  mainEmptyMessage: "No Screenshot",
+                  noImageIcon: Icons.heart_broken_outlined,
+                  mainEmptyMessage: "No Favourites",
                   secondaryEmptyMessage:
-                      "Screenshots will automatically appear here",
+                      "❤ images/videos to add them to Favourites",
                 )
-              : widget.query.toLowerCase() == 'blurry'
+              : widget.query.toLowerCase() == 'screenshot'
                   ? ImageGridView(
                       ip: widget.ip,
                       images: images,
                       gridCount: 3,
-                      noImageIcon: Icons.photo_library,
-                      mainEmptyMessage: "No Blurry Images",
+                      noImageIcon: Icons.screenshot_outlined,
+                      mainEmptyMessage: "No Screenshot",
                       secondaryEmptyMessage:
-                          "Blurry images will automatically appear here",
+                          "Screenshots will automatically appear here",
                     )
-                  : ImageGridView(
-                      ip: widget.ip,
-                      images: images,
-                      gridCount: 3,
-                      noImageIcon: Icons.search_off_outlined,
-                      mainEmptyMessage: "Nothing Found",
-                      secondaryEmptyMessage: "We didn't got it anywhere! Try searching something else",
-                    ),
+                  : widget.query.toLowerCase() == 'blurry'
+                      ? ImageGridView(
+                          ip: widget.ip,
+                          images: images,
+                          gridCount: 3,
+                          noImageIcon: Icons.photo_library,
+                          mainEmptyMessage: "No Blurry Images",
+                          secondaryEmptyMessage:
+                              "Blurry images will automatically appear here",
+                        )
+                      : ImageGridView(
+                          ip: widget.ip,
+                          images: images,
+                          gridCount: 3,
+                          noImageIcon: Icons.search_off_outlined,
+                          mainEmptyMessage: "Nothing Found",
+                          secondaryEmptyMessage:
+                              "We didn't got it anywhere! Try searching something else",
+                        ),
     );
   }
 
