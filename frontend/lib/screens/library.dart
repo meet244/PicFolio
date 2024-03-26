@@ -2,13 +2,16 @@
 
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:photoz/functions/selectedImages.dart';
 import 'package:photoz/screens/album.dart';
 import 'package:photoz/screens/bin.dart';
 import 'package:photoz/screens/duplicate.dart';
 import 'package:photoz/screens/favourite.dart';
 import 'package:photoz/screens/newalbum.dart';
+import 'package:photoz/screens/settings.dart';
 
 class Library extends StatefulWidget {
   final String ip;
@@ -45,6 +48,35 @@ class _LibraryState extends State<Library> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('PicFolio'),
+        actions: <Widget>[
+          IconButton(
+            onPressed: () {
+              // Select image from gallery
+              var ret = getimage(widget.ip, context);
+              ret.then((value) {
+                if (value) {
+                  print('Image Uploaded');
+                }
+              });
+            },
+            icon: Icon(Icons.add_a_photo_outlined, size: 32.0),
+          ),
+          IconButton(
+            onPressed: () {
+              // Open settings page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsPage(widget.ip),
+                ),
+              );
+            },
+            icon: Icon(Icons.settings_outlined, size: 32.0),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         child: Center(
           child: Column(
@@ -87,17 +119,14 @@ class _LibraryState extends State<Library> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   TransparentIconButton(
-                      icon: Icons.screenshot_outlined,
-                      text: 'Screenshots',
+                      icon: Icons.file_copy_outlined,
+                      text: 'Duplicates',
                       onPressed: () => {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => FavouritesScreen(
-                                        widget.ip,
-                                        query: "screenshot",
-                                        qtype: "buttons",
-                                      )),
+                                  builder: (context) =>
+                                      Duplicates(ip: widget.ip)),
                             )
                           }),
                   TransparentIconButton(
@@ -112,29 +141,13 @@ class _LibraryState extends State<Library> {
                           }),
                 ],
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  TransparentIconButton(
-                      icon: Icons.file_copy_outlined,
-                      text: 'Duplicates',
-                      onPressed: () => {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      Duplicates(ip: widget.ip)),
-                            )
-                          }),
-                ],
-              ),
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text(
-                  'Albums',
+                  'My Albums',
                   style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       color: Theme.of(context).colorScheme.onBackground),
                 ),
               ),
@@ -143,7 +156,7 @@ class _LibraryState extends State<Library> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 childAspectRatio:
-                    0.85, // Adjust the value to increase or decrease vertical space
+                    0.80, // Adjust the value to increase or decrease vertical space
                 children: [
                   GestureDetector(
                     onTap: () async {
@@ -206,23 +219,6 @@ class _LibraryState extends State<Library> {
                                   ),
                                 ),
                               ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    '', // Replace `date` with the actual date value
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onBackground
-                                          .withOpacity(0.6),
-                                    ),
-                                  ),
-                                ),
-                              ),
                             ],
                           );
                         },
@@ -247,7 +243,8 @@ class _LibraryState extends State<Library> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => Album(widget.ip, albums![i][0], albums![i][1]),
+                                      builder: (context) => Album(widget.ip,
+                                          albums![i][0], albums![i][1]),
                                     ),
                                   ).then((response) {
                                     if (response == true) {
@@ -256,16 +253,15 @@ class _LibraryState extends State<Library> {
                                   });
                                 },
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    albums![i][2].toString().isEmpty
-                                        ? 'https://cdn3d.iconscout.com/3d/premium/thumb/picture-3446957-2888175.png'
-                                        : 'http://${widget.ip}:7251/api/preview/meet244/${albums![i][2].toString()}',
-                                    fit: BoxFit.cover,
-                                    width: containerWidth,
-                                    height: containerWidth,
-                                  ),
-                                ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: CachedNetworkImage(
+                                      width: containerWidth,
+                                      height: containerWidth,
+                                      fit: BoxFit.cover,
+                                      imageUrl: albums![i][2].toString().isEmpty
+                                          ? 'https://cdn3d.iconscout.com/3d/premium/thumb/picture-3446957-2888175.png'
+                                          : 'http://${widget.ip}:7251/api/preview/meet244/${albums![i][2].toString()}',
+                                    )),
                               );
                             },
                           ),
@@ -285,31 +281,33 @@ class _LibraryState extends State<Library> {
                                       .colorScheme
                                       .onBackground,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 5),
-                              child: Text(
-                                albums![i][3]
-                                    .toString(), // Replace `date` with the actual date value
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onBackground
-                                      .withOpacity(0.6),
+                        if (albums![i][3] != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 5),
+                                child: Text(
+                                  albums![i][3]
+                                      .toString(), // Replace `date` with the actual date value
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onBackground
+                                        .withOpacity(0.6),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                 ],
@@ -351,7 +349,7 @@ class TransparentIconButton extends StatelessWidget {
           ),
           // shadowColor: Colors.transparent, // Remove shadow
           padding: const EdgeInsets.symmetric(
-              horizontal: 15, vertical: 22), // Remove padding
+              horizontal: 12, vertical: 12), // Remove padding
           alignment: Alignment.centerLeft, // Align content to the left
         ),
         onPressed: onPressed, // Set the onPressed callback
@@ -365,7 +363,7 @@ class TransparentIconButton extends StatelessWidget {
             Text(
               text,
               style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   color: Theme.of(context).colorScheme.onBackground),
               textAlign: TextAlign.left, // Align text to the left
             ),

@@ -1,8 +1,9 @@
-// ignore_for_file: prefer_const_constructors
+// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:photoz/functions/selectedImages.dart';
+import 'package:photoz/screens/settings.dart';
 import 'package:photoz/widgets/gridImages.dart';
 import 'package:http/http.dart' as http;
 
@@ -18,8 +19,9 @@ class Album extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<Album> {
-  Map<String, List<int>> images = {};
+  List<dynamic> images = [];
   int cnt = 0;
+  List<int> selectedImages = [];
 
   @override
   void initState() {
@@ -31,28 +33,15 @@ class _UserProfileScreenState extends State<Album> {
     final response = await http.get(Uri.parse(
         'http://${widget.ip}:7251/api/album/meet244/${widget.albumId}'));
     if (response.statusCode == 200) {
-      Map<String, dynamic> data = jsonDecode(response.body);
-      List<String> keys = data.keys.toList();
-      keys = keys.reversed.toList();
-
-      Map<String, dynamic> reversedMap = {};
-
-      for (var key in keys) {
-        reversedMap[key] = data[key];
-      }
-
-      Map<String, List<int>> data2 = reversedMap.map((key, value) {
-        return MapEntry(
-            key, (value as List<dynamic>).map((e) => e as int).toList());
-      });
+      var data = jsonDecode(response.body);
 
       // update count
-      for (var key in data.keys) {
-        cnt += data[key].length as int;
+      for (var i in data) {
+        cnt += int.parse(i[1].length.toString());
       }
 
       setState(() {
-        images = data2;
+        images = data;
       });
     } else {
       throw Exception('Failed to load images');
@@ -77,7 +66,7 @@ class _UserProfileScreenState extends State<Album> {
     }
   }
 
-  Future<void> deleteAlbum() async {
+  Future<bool> deleteAlbum() async {
     final response = await http.post(
       Uri.parse('http://${widget.ip}:7251/api/album/delete'),
       body: {
@@ -86,9 +75,11 @@ class _UserProfileScreenState extends State<Album> {
       },
     );
     if (response.statusCode == 200) {
-      Navigator.pop(context, true);
+      Navigator.pop(context);
+      return true;
     } else {
-      throw Exception('Failed to delete album');
+      print('Failed to delete album');
+      return false;
     }
   }
 
@@ -98,67 +89,187 @@ class _UserProfileScreenState extends State<Album> {
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
-          title: Text("Album"),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.pop(context);
-            },
+          title: Row(
+            children: [
+              Text(
+                (selectedImages.isEmpty)
+                    ? "Album"
+                    : (selectedImages.length == 1)
+                        ? "${selectedImages.length} item"
+                        : "${selectedImages.length} items", // Show count if images are selected
+              ),
+            ],
           ),
-          actions: [
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'delete') {
-                  deleteAlbum();
-                } else if (value == 'rename') {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      String newName = '';
-                      return AlertDialog(
-                        title: Text('Enter Album Name'),
-                        content: TextField(
-                          autofocus: true,
-                          maxLength: 30, // Add maximum length limit
-                          onChanged: (value) {
-                            newName = value;
-                          },
+          leading: (selectedImages.isNotEmpty)
+              ? IconButton(
+                  onPressed: () {
+                    // Clear selection
+                    setState(() {
+                      selectedImages.clear();
+                    });
+                  },
+                  icon: Icon(
+                    Icons.close,
+                    size: 32.0,
+                  ),
+                )
+              : IconButton(
+                  onPressed: () {
+                    // Navigate back
+                    Navigator.pop(context);
+                  },
+                  icon: Icon(
+                    Icons.arrow_back,
+                    size: 32.0,
+                  ),
+                ),
+          actions: <Widget>[
+            if (selectedImages.isNotEmpty)
+              IconButton(
+                onPressed: () {
+                  var ret = onDelete(widget.ip, context, selectedImages);
+                  ret.then((value) {
+                    if (value) {
+                      setState(() {
+                        selectedImages.clear();
+                      });
+                    }
+                  });
+                },
+                icon: Icon(Icons.delete_outlined, size: 32.0),
+              ),
+            if (selectedImages.isNotEmpty)
+              IconButton(
+                onPressed: () {
+                  var ret = onSend(widget.ip, selectedImages);
+                  ret.then((value) {
+                    if (value) {
+                      setState(() {
+                        selectedImages.clear();
+                      });
+                    }
+                  });
+                },
+                icon: Icon(Icons.share_outlined, size: 32.0),
+              ),
+            if (selectedImages.isNotEmpty)
+              PopupMenuButton(
+                itemBuilder: (BuildContext context) {
+                  return [
+                    if (selectedImages.isNotEmpty)
+                      PopupMenuItem(
+                        child: Row(
+                          children: [
+                            Icon(Icons.cancel_outlined, size: 32.0),
+                            SizedBox(width: 8.0),
+                            Text('Remove from Album'),
+                          ],
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              if (newName.length > 30 || newName.isEmpty) {
-                                return;
-                              } else {
-                                Navigator.of(context).pop();
-                                rename(newName);
-                              }
-                            },
-                            child: Text('Save'),
-                          ),
+                        onTap: () {
+                          // Handle edit option tap
+                          var ret = onRemoveFromAlbum(
+                              widget.ip, widget.albumId, selectedImages);
+                          ret.then((value) {
+                            if (value) {
+                              setState(() {
+                                selectedImages.clear();
+                              });
+                            }
+                          });
+                        },
+                      ),
+                    if (selectedImages.isNotEmpty)
+                      PopupMenuItem(
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_calendar_outlined, size: 32.0),
+                            SizedBox(width: 8.0),
+                            Text('Edit Date'),
+                          ],
+                        ),
+                        onTap: () {
+                          // Handle copy option tap
+                          editDate(widget.ip, context, selectedImages);
+                        },
+                      ),
+                    if (selectedImages.isNotEmpty)
+                      PopupMenuItem(
+                        child: Row(
+                          children: [
+                            Icon(Icons.groups_outlined, size: 32.0),
+                            SizedBox(width: 8.0),
+                            Text('Add to shared'),
+                          ],
+                        ),
+                        onTap: () {
+                          // Handle move option tap
+                          moveToShared(widget.ip, selectedImages);
+                        },
+                      ),
+                  ];
+                },
+                child: Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: Icon(
+                    Icons.more_vert_outlined,
+                    size: 32.0,
+                  ),
+                ),
+              ),
+            if (selectedImages.isEmpty)
+              PopupMenuButton(
+                itemBuilder: (BuildContext context) {
+                  return [
+                    PopupMenuItem(
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 32.0),
+                          SizedBox(width: 8.0),
+                          Text('Rename Album'),
                         ],
-                      );
-                    },
-                  );
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
-                  value: 'rename',
-                  child: Text('Rename Album'),
+                      ),
+                      onTap: () {
+                        // Handle edit option tap
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Text('Rename Album'),
+                              content: TextField(
+                                autofocus: true,
+                                onSubmitted: (value) {
+                                  rename(value);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    PopupMenuItem(
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outlined, size: 32.0),
+                          SizedBox(width: 8.0),
+                          Text('Delete Album'),
+                        ],
+                      ),
+                      onTap: () {
+                        // Handle delete option tap
+                        deleteAlbum();
+                      },
+                    ),
+                  ];
+                },
+                child: Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: Icon(
+                    Icons.more_vert_outlined,
+                    size: 32.0,
+                  ),
                 ),
-                const PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Text('Delete Album'),
-                ),
-              ],
-            ),
+              ),
           ],
         ),
         body: SingleChildScrollView(
@@ -175,7 +286,7 @@ class _UserProfileScreenState extends State<Album> {
                         widget.albumName,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontSize: 50, fontWeight: FontWeight.w100),
+                            fontSize: 50, fontWeight: FontWeight.w300),
                       ),
                       const SizedBox(height: 3),
                       Row(
@@ -203,6 +314,13 @@ class _UserProfileScreenState extends State<Album> {
                 noImageIcon: Icons.image_outlined,
                 mainEmptyMessage: "No Images Found",
                 secondaryEmptyMessage: "Images will appear here",
+                isAlbum: true,
+                albumOrFaceId: widget.albumId,
+                onSelectionChanged: (selected) {
+                  setState(() {
+                    selectedImages = selected;
+                  });
+                },
               ),
             ],
           ),

@@ -1,23 +1,22 @@
-import 'package:flutter/material.dart';
-import 'package:photoz/screens/album.dart';
-import 'package:photoz/screens/all_people.dart';
-// import 'package:photoz/screens/bin.dart';
-import 'shravani.dart';
-import 'test.dart';
+// import 'package:flutter/material.dart';
+// import 'package:photoz/temp_ip.dart';
+// import 'shravani.dart';
 
-// import 'try.dart';
+// void main() {
+//   // runApp(MaterialApp(
+//   //   debugShowCheckedModeBanner: false,
+//   //   // title: 'Photoz',
+//   //   home: HomeLeft('127.0.0.1'),
+//   // ));
+//   // runApp(MyHomePage("192.168.0.106"));
 
-void main() {
-  // runApp(MaterialApp(
-  //   debugShowCheckedModeBanner: false,
-  //   // title: 'Photoz',
-  //   home: AllPeople('127.0.0.1'),
-  // ));
-  // runApp(MyApp("192.168.0.106"));
-  runApp(MyHomePage('192.168.0.106'));
-  // runApp(AllPeople('127.0.0.1'));
-  // runApp(Album('127.0.0.1', "1", "Europe Trip"));
+//   // runApp(MaterialApp(home: MyHomePage('192.168.0.107'), debugShowCheckedModeBanner: false));
+//   // runApp(AllPeople('127.0.0.1'));
+//   // runApp(Album('127.0.0.1', "1", "Europe Trip"));
 
-}
+//   runApp(MyApp());
+
+// }
 
 // --------------------------------------------------------------------------------------------------------
+

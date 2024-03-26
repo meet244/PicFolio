@@ -1,22 +1,23 @@
 // ignore_for_file: prefer_const_constructors
-
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:photoz/screens/user.dart';
 
 class AllPeople extends StatefulWidget {
   String ip;
 
-  AllPeople(this.ip, {super.key});
+  AllPeople(this.ip, {Key? key}) : super(key: key);
 
   @override
   _MyAppState createState() => _MyAppState();
 }
 
 class _MyAppState extends State<AllPeople> {
-  late Map<String, String> faceNames;
+  late List<dynamic> faceNames;
   final List<String> _selectedImages = [];
   bool _isSearching = true;
 
@@ -33,11 +34,9 @@ class _MyAppState extends State<AllPeople> {
         body: {'username': 'meet244'},
       );
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        var data = jsonDecode(response.body);
         // print(data);
-        faceNames = Map<String, String>.from(data);
-
-        // remove hidden faces - get from shared pref
+        faceNames = data;
       } else {
         throw Exception('Failed to load faces');
       }
@@ -56,7 +55,11 @@ class _MyAppState extends State<AllPeople> {
     if (response.statusCode == 200) {
       setState(() {
         // rename from var
-        faceNames[userId.toString()] = name;
+        for (var face in faceNames) {
+          if (face[0].toString() == userId.toString()) {
+            face[1] = name;
+          }
+        }
       });
     } else {
       throw Exception('Failed to load name');
@@ -72,11 +75,13 @@ class _MyAppState extends State<AllPeople> {
     if (response.statusCode == 200) {
       setState(() {
         // remove name from var
-        faceNames.forEach((key, value) {
-          if (names.contains(key)) {
-            faceNames[key] = "Unknown";
+        for (var name in names) {
+          for (var face in faceNames) {
+            if (face[0].toString() == name) {
+              face[1] = "Unknown";
+            }
           }
-        });
+        }
         _selectedImages.clear();
       });
     } else {
@@ -121,129 +126,124 @@ class _MyAppState extends State<AllPeople> {
       title: 'People',
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('People'),
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-          actions: [
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                // Handle the selected item here
-                if (value == 'merge') {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text('Merge Faces'),
-                        content: const Text(
-                            'Are you sure you want to merge these faces?\nThis action cannot be undone.'),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              mergeFaces(
-                                  _selectedImages[0], _selectedImages[1]);
-                            },
-                            child: const Text('Merge'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                } else if (value == 'rename') {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      String newName =
-                          ''; // Declare a variable to store the new name
-                      return AlertDialog(
-                        title: const Text('Rename Face'),
-                        content: TextField(
-                          decoration: InputDecoration(
-                            hintText: 'Enter new name',
-                          ),
-                          onChanged: (value) {
-                            newName =
-                                value; // Update the new name variable when the input changes and limit it to 30 characters
-                          },
-                          maxLength:
-                              30, // Set the maximum length of the input to 30 characters
-                        ),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              if (newName.length > 30) {
-                                return;
-                              }
-                              if (newName.isEmpty) {
-                                return;
-                              }
-                              Navigator.of(context).pop();
-                              renameFace(
-                                  newName,
-                                  int.parse(_selectedImages[
-                                      0])); // Pass the new name and userId to the renameFace function
-                              setState(() {
-                                _selectedImages.clear();
-                              });
-                            },
-                            child: const Text('Rename'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                } else if (value == 'noname') {
-                  removeName(_selectedImages);
-                } else if (value == 'hide') {
-                  // hide faces -- add them to shared pref to hide them
-                } else if (value == 'show') {
-                  // show hidden faces -- shaw them from shared pref
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                if (_selectedImages.length == 2)
-                  const PopupMenuItem<String>(
-                    value: 'merge',
-                    child: Text('Merge Faces'),
-                  ),
-                if (_selectedImages.length == 1)
-                  const PopupMenuItem<String>(
-                    value: 'rename',
-                    child: Text('Rename'),
-                  ),
-                if (_selectedImages.isNotEmpty)
-                  const PopupMenuItem<String>(
-                    value: 'noname',
-                    child: Text('Reomve name'),
-                  ),
-                if (_selectedImages.isNotEmpty)
-                  const PopupMenuItem<String>(
-                    value: 'hide',
-                    child: Text('Hide faces'),
-                  ),
-                const PopupMenuItem<String>(
-                  value: 'show ',
-                  child: Text('Show Hidden faces'),
+          title: _selectedImages.isNotEmpty
+              ? Text('${_selectedImages.length} selected')
+              : const Text('People'),
+          leading: _selectedImages.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.clear),
+                  onPressed: () {
+                    setState(() {
+                      _selectedImages.clear();
+                    });
+                  },
+                )
+              : IconButton(
+                  icon: Icon(Icons.arrow_back),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
                 ),
-              ],
-            ),
-          ],
+          actions: _selectedImages.isNotEmpty
+              ? [
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      // Handle the selected item here
+                      if (value == 'merge') {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text('Merge Faces'),
+                              content: const Text(
+                                  'Are you sure you want to merge these faces?\nThis action cannot be undone.'),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    mergeFaces(
+                                        _selectedImages[0], _selectedImages[1]);
+                                  },
+                                  child: const Text('Merge'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      } else if (value == 'rename') {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            String newName = '';
+                            return AlertDialog(
+                              title: const Text('Rename Face'),
+                              content: TextField(
+                                decoration: InputDecoration(
+                                  hintText: 'Enter new name',
+                                ),
+                                onChanged: (value) {
+                                  newName = value;
+                                },
+                                maxLength: 30,
+                              ),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    if (newName.length > 30) {
+                                      return;
+                                    }
+                                    if (newName.isEmpty) {
+                                      return;
+                                    }
+                                    Navigator.of(context).pop();
+                                    renameFace(
+                                        newName, int.parse(_selectedImages[0]));
+                                    setState(() {
+                                      _selectedImages.clear();
+                                    });
+                                  },
+                                  child: const Text('Rename'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      } else if (value == 'noname') {
+                        removeName(_selectedImages);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      if (_selectedImages.length == 2)
+                        const PopupMenuItem<String>(
+                          value: 'merge',
+                          child: Text('Merge Faces'),
+                        ),
+                      if (_selectedImages.length == 1)
+                        const PopupMenuItem<String>(
+                          value: 'rename',
+                          child: Text('Rename'),
+                        ),
+                      if (_selectedImages.isNotEmpty)
+                        const PopupMenuItem<String>(
+                          value: 'noname',
+                          child: Text('Remove name'),
+                        ),
+                    ],
+                  ),
+                ]
+              : null,
         ),
         body: _buildBody(),
       ),
@@ -268,17 +268,17 @@ class _MyAppState extends State<AllPeople> {
             child: GestureDetector(
               onLongPress: () {
                 // Add your action here
-                _toggleSelection(faceNames.keys.toList()[index]);
+                _toggleSelection(faceNames[index][0].toString());
               },
               onTap: () {
                 if (_selectedImages.isNotEmpty) {
-                  _toggleSelection(faceNames.keys.toList()[index]);
+                  _toggleSelection(faceNames[index][0].toString());
                 } else {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => UserProfileScreen(
                         widget.ip,
-                        faceNames.keys.toList()[index],
+                        faceNames[index][0].toString(),
                       ),
                     ),
                   );
@@ -286,13 +286,13 @@ class _MyAppState extends State<AllPeople> {
               },
               child: Stack(
                 children: [
-                  Image.network(
-                    "http://${widget.ip}:7251/api/face/image/meet244/${faceNames.keys.toList()[index]}",
+                  CachedNetworkImage(
+                    imageUrl: "http://${widget.ip}:7251/api/face/image/meet244/${faceNames[index][0]}",
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
                   ),
-                  if (faceNames.values.toList()[index] != "Unknown")
+                  if (faceNames[index][1].toString() != "Unknown")
                     Container(
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
@@ -311,7 +311,7 @@ class _MyAppState extends State<AllPeople> {
                       child: Padding(
                         padding: const EdgeInsets.all(5),
                         child: Text(
-                          faceNames.values.toList()[index].toString(),
+                          faceNames[index][1].toString(),
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16.0,
@@ -319,13 +319,13 @@ class _MyAppState extends State<AllPeople> {
                         ),
                       ),
                     ),
-                  if (_selectedImages.contains(faceNames.keys.toList()[index]))
+                  if (_selectedImages.contains(faceNames[index][0].toString()))
                     Positioned.fill(
                       child: Container(
                         color: Colors.black.withOpacity(0.5),
                         child: Icon(
                           Icons.check_circle,
-                          color: Colors.blue,
+                          color: Colors.white,
                           size: 40,
                         ),
                       ),

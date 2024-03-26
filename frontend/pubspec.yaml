@@ -32,12 +32,10 @@ dependencies:
     sdk: flutter
   http: ^1.2.0
   image_picker: ^1.0.7
-  # qr_code_scanner: ^0.7.0
   js: ^0.7.1
   photo_view: ^0.14.0
   intl: ^0.19.0
-  video_player: ^2.2.17
-  # flutter_tts: ^4.0.1
+  video_player: ^2.8.3
   path_provider: ^2.1.2
   
   # The following adds the Cupertino Icons font to your application.
@@ -47,6 +45,11 @@ dependencies:
   share_plus: ^7.2.2
   shared_preferences: ^2.0.7
   salomon_bottom_bar: ^3.3.2
+  # drag_select_grid_view: ^0.6.2
+  # group_grid_view: ^1.0.1
+  cached_network_image: ^3.3.1
+  pod_player: ^0.2.1
+  appinio_video_player: ^1.2.2
 
 dev_dependencies:
   flutter_test:

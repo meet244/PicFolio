@@ -1,7 +1,6 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import 'dart:async';
@@ -12,7 +11,6 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photoz/widgets/face.dart';
-import 'package:pod_player/pod_player.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 
@@ -542,31 +540,20 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   bool isMainImageLoaded = false;
   Uint8List? mainImageBytes;
   bool isliked = false;
-  bool isImage = true;
-
-  late final PodPlayerController controller;
-  final videoTextFieldCtr = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _previewImageFuture = fetchPreviewImage();
-    // _mainImageFuture = fetchMainImage();
-    // _mainImageFuture.then((_) {
-    //   setState(() {
-    //     isMainImageLoaded = true;
-    //   });
-    // });
+    _mainImageFuture = fetchMainImage();
+    _mainImageFuture.then((_) {
+      setState(() {
+        isMainImageLoaded = true;
+      });
+    });
     isImageLiked(widget.imageId);
     // SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack,
     //     overlays: [SystemUiOverlay.top]);
-
-    controller = PodPlayerController(
-      playVideoFrom: PlayVideoFrom.network(
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-      ),
-    )..initialise();
-    super.initState();
   }
 
   @override
@@ -574,116 +561,68 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     super.dispose();
     // SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
     //     overlays: [SystemUiOverlay.top]);
-
-    controller.dispose();
-  }
-
-  void initPhoto() {
-    print('Initializing Photo');
-    _mainImageFuture = fetchMainImage();
-    _mainImageFuture.then((_) {
-      setState(() {
-        isMainImageLoaded = true;
-      });
-    });
-  }
-
-  Future<void> initVideo() async {
-    print('Initializing Video');
-    try {
-      snackBar('Loading....');
-      FocusScope.of(context).unfocus();
-      await controller.changeVideo(
-        playVideoFrom: PlayVideoFrom.network('http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}/${widget.date}'),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    } catch (e) {
-      snackBar('Unable to load,\n $e');
-    }
-    setState(() {
-      isImage = false;
-    });
-  }
-
-  void snackBar(String text) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(text),
-        ),
-      );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  showBottomBar = !showBottomBar;
-                });
-              },
-              child: isImage
-                  ? FutureBuilder(
-                      future: isMainImageLoaded
-                          ? _mainImageFuture
-                          : _previewImageFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        } else if (snapshot.hasError) {
-                          return Center(
-                              child: Text('Error: ${snapshot.error}'));
-                        } else if (snapshot.hasData) {
-                          return (isImage)
-                              ? PhotoView(
-                                  imageProvider: MemoryImage(
-                                      Uint8List.fromList(snapshot.data!)),
-                                  minScale: PhotoViewComputedScale.contained,
-                                  maxScale:
-                                      PhotoViewComputedScale.covered * 5.0,
-                                )
-                              : Center(
-                                  child: Text('Image not supported'),
-                                );
-                        } else {
-                          return SizedBox(); // Return an empty widget if there's no data
-                        }
-                      },
-                    )
-                  : Center(
-                      child: PodVideoPlayer(
-                        controller: controller,
-                        podProgressBarConfig: const PodProgressBarConfig(
-                          padding: kIsWeb
-                              ? EdgeInsets.zero
-                              : EdgeInsets.only(
-                                  bottom: 20,
-                                  left: 20,
-                                  right: 20,
-                                ),
-                          playingBarColor: Colors.blue,
-                          circleHandlerColor: Colors.blue,
-                          backgroundColor: Colors.blueGrey,
-                        ),
-                      ),
-                    ),
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                showBottomBar = !showBottomBar;
+              });
+            },
+            child: Stack(
+              children: [
+                FutureBuilder(
+                  future: isMainImageLoaded
+                      ? _mainImageFuture
+                      : _previewImageFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else if (snapshot.hasData) {
+                      return PhotoView(
+                        imageProvider:
+                            MemoryImage(Uint8List.fromList(snapshot.data!)),
+                        minScale: PhotoViewComputedScale.contained,
+                        maxScale: PhotoViewComputedScale.covered * 5.0,
+                      );
+                    } else {
+                      return SizedBox(); // Return an empty widget if there's no data
+                    }
+                  },
+                ),
+                Visibility(
+                  visible: !isMainImageLoaded,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ],
             ),
-            AnimatedOpacity(
+          ),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                showBottomBar = !showBottomBar;
+              });
+            },
+            child: AnimatedOpacity(
               opacity: showBottomBar ? 1.0 : 0.0,
               duration: Duration(milliseconds: 200),
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Container(
                   padding: EdgeInsets.all(16),
+                  // color: Colors.black.withOpacity(0.5),
                   color: Colors.transparent,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -763,176 +702,179 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                 ),
               ),
             ),
-            AnimatedOpacity(
-              opacity: showBottomBar ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 200),
-              child: SafeArea(
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  height: kToolbarHeight,
-                  color: Colors.transparent,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                      if (widget.date != null)
-                        IconButton(
-                          icon: Icon(Icons.more_vert, color: Colors.white),
-                          onPressed: () {
-                            // Handle dot-dot-dot options button press
-                            showDetails();
-                          },
-                        ),
-                    ],
+          ),
+          AnimatedOpacity(
+            opacity: showBottomBar ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              height: kToolbarHeight,
+              color: Colors.transparent,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
                   ),
-                ),
+                  if (widget.date != null)
+                    IconButton(
+                      icon: Icon(Icons.more_vert, color: Colors.white),
+                      onPressed: () {
+                        // Handle dot-dot-dot options button press
+                        showModalBottomSheet(
+                          enableDrag: true,
+                          isScrollControlled: true,
+                          context: context,
+                          builder: (BuildContext context) {
+                            // Use a FutureBuilder to show loading indicator and handle API response
+                            return FutureBuilder(
+                              future: fetchDetails(widget.imageId),
+                              builder: (BuildContext context,
+                                  AsyncSnapshot<dynamic> snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return Container(
+                                    height: 200,
+                                    alignment: Alignment.center,
+                                    child: CircularProgressIndicator(),
+                                  );
+                                } else {
+                                  if (snapshot.hasError) {
+                                    return Text('Error: ${snapshot.error}');
+                                  } else {
+                                    // API call successful, show details in bottom sheet
+                                    return DraggableScrollableSheet(
+                                      expand: false,
+                                      minChildSize: 0.3,
+                                      maxChildSize: 1,
+                                      initialChildSize: 0.5,
+                                      builder: (BuildContext context,
+                                          ScrollController scrollController) {
+                                        return ListView(
+                                          controller: scrollController,
+                                          // mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            // Faces will show up here
+                                            const SizedBox(height: 20),
+                                            if (snapshot
+                                                .data['faces'].isNotEmpty)
+                                              const Padding(
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 20),
+                                                child: Text("Faces",
+                                                    style: TextStyle(
+                                                        fontSize: 24,
+                                                        fontWeight:
+                                                            FontWeight.bold)),
+                                              ),
+                                            if (snapshot
+                                                .data['faces'].isNotEmpty)
+                                              FaceList(
+                                                faceNames:
+                                                    snapshot.data['faces'],
+                                                ip: widget.ip,
+                                                isSquared: true,
+                                              ),
+
+                                            const Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 20),
+                                              child: Text("Details",
+                                                  style: TextStyle(
+                                                      fontSize: 24,
+                                                      fontWeight:
+                                                          FontWeight.bold)),
+                                            ),
+                                            DetailComponent(
+                                              iconData: Icons.event_outlined,
+                                              title: DateFormat('d MMM yyyy')
+                                                  .format(
+                                                      DateFormat('dd-MM-yyyy')
+                                                          .parse(snapshot
+                                                              .data['date']
+                                                              .toString())),
+                                              subtitle:
+                                                  "${DateFormat('E').format(DateFormat('dd-MM-yyyy').parse(snapshot.data['date'].toString().replaceAll('/', '-')))}, ${snapshot.data['time']}",
+                                            ),
+                                            DetailComponent(
+                                                iconData: Icons.image_outlined,
+                                                title: snapshot.data['name'],
+                                                subtitle:
+                                                    "${snapshot.data['mp']} • ${snapshot.data['width']} x ${snapshot.data['height']}"),
+                                            DetailComponent(
+                                                iconData:
+                                                    Icons.cloud_done_outlined,
+                                                title:
+                                                    'Backed Up (${snapshot.data['size']})',
+                                                subtitle:
+                                                    "${snapshot.data['format'].toString().toUpperCase()} • ${(snapshot.data['compress'] == "false") ? "Original" : "Compressed"}"),
+                                            if (snapshot.data['location'] !=
+                                                null)
+                                              DetailComponent(
+                                                  iconData: Icons
+                                                      .location_on_outlined,
+                                                  title: 'Location',
+                                                  subtitle: snapshot
+                                                          .data['location']
+                                                          ?.toString() ??
+                                                      'Unknown'),
+                                            if (snapshot
+                                                .data['tags'].isNotEmpty)
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 8.0,
+                                                        horizontal: 20.0),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.sell_outlined,
+                                                      size: 40,
+                                                    ),
+                                                    const SizedBox(width: 20),
+                                                    Expanded(
+                                                      child: Wrap(
+                                                        spacing: 5.0,
+                                                        runSpacing: 5.0,
+                                                        alignment:
+                                                            WrapAlignment.start,
+                                                        children:
+                                                            List<Widget>.from(
+                                                          snapshot.data['tags']
+                                                              .map(
+                                                            (tag) => Chip(
+                                                              label: Text(tag
+                                                                  .toString()),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            const SizedBox(height: 20),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  }
+                                }
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
+                ],
               ),
             ),
-          ],
-        )
-        // : SafeArea(
-        //     child: Center(
-        //       child: PodVideoPlayer(
-        //         controller: controller,
-        //         podProgressBarConfig: const PodProgressBarConfig(
-        //           padding: kIsWeb
-        //               ? EdgeInsets.zero
-        //               : EdgeInsets.only(
-        //                   bottom: 20,
-        //                   left: 20,
-        //                   right: 20,
-        //                 ),
-        //           playingBarColor: Colors.blue,
-        //           circleHandlerColor: Colors.blue,
-        //           backgroundColor: Colors.blueGrey,
-        //         ),
-        //       ),
-        //     ),
-        //   ),
-        );
-  }
-
-  void showDetails() {
-    showModalBottomSheet(
-      enableDrag: true,
-      isScrollControlled: true,
-      context: context,
-      builder: (BuildContext context) {
-        // Use a FutureBuilder to show loading indicator and handle API response
-        return FutureBuilder(
-          future: fetchDetails(widget.imageId),
-          builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Container(
-                height: 200,
-                alignment: Alignment.center,
-                child: CircularProgressIndicator(),
-              );
-            } else {
-              if (snapshot.hasError) {
-                return Text('Error: ${snapshot.error}');
-              } else {
-                // API call successful, show details in bottom sheet
-                return DraggableScrollableSheet(
-                  expand: false,
-                  minChildSize: 0.3,
-                  maxChildSize: 1,
-                  initialChildSize: 0.5,
-                  builder: (BuildContext context,
-                      ScrollController scrollController) {
-                    return ListView(
-                      controller: scrollController,
-                      // mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Faces will show up here
-                        const SizedBox(height: 20),
-                        if (snapshot.data['faces'].isNotEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20),
-                            child: Text("Faces",
-                                style: TextStyle(
-                                    fontSize: 24, fontWeight: FontWeight.bold)),
-                          ),
-                        if (snapshot.data['faces'].isNotEmpty)
-                          FaceList(
-                            faceNames: snapshot.data['faces'],
-                            ip: widget.ip,
-                            isSquared: true,
-                          ),
-
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: Text("Details",
-                              style: TextStyle(
-                                  fontSize: 24, fontWeight: FontWeight.bold)),
-                        ),
-                        DetailComponent(
-                          iconData: Icons.event_outlined,
-                          title: DateFormat('d MMM yyyy').format(
-                              DateFormat('dd-MM-yyyy')
-                                  .parse(snapshot.data['date'].toString())),
-                          subtitle:
-                              "${DateFormat('E').format(DateFormat('dd-MM-yyyy').parse(snapshot.data['date'].toString().replaceAll('/', '-')))}, ${snapshot.data['time']}",
-                        ),
-                        DetailComponent(
-                            iconData: Icons.image_outlined,
-                            title: snapshot.data['name'],
-                            subtitle:
-                                "${snapshot.data['mp']} • ${snapshot.data['width']} x ${snapshot.data['height']}"),
-                        DetailComponent(
-                            iconData: Icons.cloud_done_outlined,
-                            title: 'Backed Up (${snapshot.data['size']})',
-                            subtitle:
-                                "${snapshot.data['format'].toString().toUpperCase()} • ${(snapshot.data['compress'] == "false") ? "Original" : "Compressed"}"),
-                        if (snapshot.data['location'] != null)
-                          DetailComponent(
-                              iconData: Icons.location_on_outlined,
-                              title: 'Location',
-                              subtitle: snapshot.data['location']?.toString() ??
-                                  'Unknown'),
-                        if (snapshot.data['tags'].isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 8.0, horizontal: 20.0),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.sell_outlined,
-                                  size: 40,
-                                ),
-                                const SizedBox(width: 20),
-                                Expanded(
-                                  child: Wrap(
-                                    spacing: 5.0,
-                                    runSpacing: 5.0,
-                                    alignment: WrapAlignment.start,
-                                    children: List<Widget>.from(
-                                      snapshot.data['tags'].map(
-                                        (tag) => Chip(
-                                          label: Text(tag.toString()),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        const SizedBox(height: 20),
-                      ],
-                    );
-                  },
-                );
-              }
-            }
-          },
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 
@@ -1031,25 +973,18 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   }
 
   Future<List<int>> fetchPreviewImage() async {
+    // print(widget.date);
     String url;
     if (widget.date != null) {
-      url =
-          'http://${widget.ip}:7251/api/preview/meet244/${widget.imageId}/${widget.date}';
+      url = 'http://${widget.ip}:7251/api/preview/meet244/${widget.imageId}/${widget.date}';
     } else {
       url = 'http://${widget.ip}:7251/api/preview/meet244/${widget.imageId}';
     }
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
-      if (response.headers['content-type'] != 'image/webp') {
-        initVideo();
-      } else {
-        initPhoto();
-      }
       return response.bodyBytes;
     } else {
-      print(response.statusCode);
-      print(response.reasonPhrase);
       throw Exception('Failed to load preview image');
     }
   }
@@ -1062,10 +997,14 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     } else {
       url = 'http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}';
     }
+    print(url);
+    print(widget.date != null);
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       mainImageBytes = response.bodyBytes;
       return response.bodyBytes;
+    } else if (response.statusCode == 304) {
+      return mainImageBytes!;
     } else {
       throw Exception('Failed to load main image');
     }

@@ -1,8 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:photoz/screens/user.dart';
 
 class FaceList extends StatelessWidget {
-  final Map<String, String> faceNames;
+  final List<dynamic> faceNames;
   final String ip;
   final bool isSquared;
 
@@ -22,8 +23,8 @@ class FaceList extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: faceNames.length,
         itemBuilder: (context, index) {
-          final faceId = faceNames.keys.elementAt(index);
-          final faceName = faceNames[faceId]!;
+          final faceId = faceNames[index][0].toString();
+          final faceName = faceNames[index][1].toString();
           return Padding(
             padding: EdgeInsets.only(
               left: index == 0 ? 8.0 : 0.0,
@@ -74,17 +75,21 @@ class FaceItem extends StatelessWidget {
             isSquared
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(10.0),
-                    child: Image.network(
-                      'http://$ip:7251/api/face/image/meet244/$faceId',
+                    child: CachedNetworkImage(
+                      imageUrl: 'http://$ip:7251/api/face/image/meet244/$faceId',
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
                     ),
                   )
-                : CircleAvatar(
-                    backgroundImage: NetworkImage(
-                        'http://$ip:7251/api/face/image/meet244/$faceId'),
-                    radius: 50.0,
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(45.0),
+                    child: CachedNetworkImage(
+                      imageUrl: 'http://$ip:7251/api/face/image/meet244/$faceId',
+                      width: 90,
+                      height: 90,
+                      fit: BoxFit.cover,
+                    ),
                   ),
             const SizedBox(height: 5.0),
             Text(

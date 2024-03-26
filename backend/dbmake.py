@@ -35,7 +35,7 @@ cursor.execute('''CREATE TABLE assets
             deleted DATE DEFAULT 0 NOT NULL, 
             compress INTEGER DEFAULT NULL,
             liked INTEGER DEFAULT NULL,
-            owner TEXT DEFAULT NULL)''')
+            shared INTEGER DEFAULT NULL)''')
 
 # create tags table
 cursor.execute('''CREATE TABLE tags

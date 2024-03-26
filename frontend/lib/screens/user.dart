@@ -1,12 +1,16 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:photoz/screens/search.dart';
+import 'package:photoz/screens/settings.dart';
 import 'package:photoz/widgets/gridImages.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:share_plus/share_plus.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String userId;
@@ -19,9 +23,140 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
-  Map<String, List<int>> images = {};
+  List<dynamic> images = [];
   String name = '';
   int cnt = 0;
+  List<int> selectedImages = [];
+
+  Future<void> _onSend() async {
+    // Implement your send logic here
+    print(selectedImages);
+
+    try {
+      final tempDir = await getTemporaryDirectory();
+
+      // Create temporary files for each image
+      final tempFiles = <File>[];
+      for (int i = 0; i < selectedImages.length; i++) {
+        final imageId = selectedImages[i];
+        final mainImageBytes = await fetchMainImage(imageId);
+        // selectedImages[imageId] = mainImageBytes;
+        // Save the main image to a temporary file
+        final tempFile = File('${tempDir.path}/temp_image_$i.png');
+        await tempFile.writeAsBytes(mainImageBytes);
+        tempFiles.add(tempFile);
+      }
+
+      // Share the multiple images using the share_plus package
+      await Share.shareFiles(
+        tempFiles.map((file) => file.path).toList(),
+        text: 'I shared these images from my PicFolio app. Try them out!',
+        subject: 'Image Sharing',
+      );
+    } catch (e) {
+      print('Error sharing images: $e');
+      // Handle the error, e.g., show a snackbar or log the error
+    }
+
+    setState(() {
+      selectedImages.clear(); // Clear selected images after sending
+    });
+  }
+
+  Future<List<int>> fetchMainImage(int imageId) async {
+    var url = 'http://${widget.ip}:7251/api/asset/meet244/$imageId';
+
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return response.bodyBytes;
+    } else {
+      throw Exception('Failed to load preview image ${response.statusCode}');
+    }
+  }
+
+  Future<void> _onDelete() async {
+    // Implement your delete logic here
+    print(selectedImages);
+
+    // Call delete image API here
+    var imgs = selectedImages.join(',');
+    final response = await http
+        .delete(Uri.parse('http://${widget.ip}:7251/api/delete/meet244/$imgs'));
+    if (response.statusCode == 200) {
+      print('Image deleted');
+      // remove the deleted images from the grid
+      setState(() {
+        selectedImages.clear();
+      });
+    } else {
+      throw Exception('Failed to delete image');
+    }
+  }
+
+  void _onAdd() {
+    // Implement your add logic here
+    print(selectedImages);
+    setState(() {
+      selectedImages.clear(); // Clear selected images after sending
+    });
+  }
+
+  Future<void> _editDate() async {
+    // Implement your edit date logic here
+    // get a date from calendar
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      // initialDate: selectedDate,
+      firstDate: DateTime(2015, 8),
+      lastDate: DateTime(2101),
+    );
+    if (picked == null) {
+      return;
+    }
+    var date = (picked.toString().split(" ")[0]);
+    var imgs = selectedImages.join(',');
+    final response = await http.post(
+      Uri.parse('http://${widget.ip}:7251/api/redate'),
+      body: {
+        'username': 'meet244',
+        'date': date,
+        'id': imgs,
+      },
+    );
+    if (response.statusCode == 200) {
+      print('Dates Updated');
+      setState(() {
+        selectedImages.clear();
+      });
+      // remove the deleted images from the grid
+    } else {
+      throw Exception('Failed to update date');
+    }
+
+    setState(() {
+      selectedImages.clear(); // Clear selected images after sending
+    });
+  }
+
+  Future<void> _moveToFamily() async {
+    // Implement your move to family logic here
+    print(selectedImages);
+    final response = await http.post(
+      Uri.parse('http://${widget.ip}:7251/api/shared/move'),
+      body: {
+        'username': 'meet244',
+        'asset_id': selectedImages.join(','),
+      },
+    );
+    if (response.statusCode == 200) {
+      print('Image Shared');
+    } else {
+      throw Exception('Failed to move to share');
+    }
+    setState(() {
+      selectedImages.clear(); // Clear selected images after sending
+    });
+  }
 
   @override
   void initState() {
@@ -31,27 +166,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> fetchImages() async {
-    final response = await http.get(
-      Uri.parse('http://${widget.ip}:7251/api/list/face/meet244/${widget.userId}')
-    );
+    final response = await http.get(Uri.parse(
+        'http://${widget.ip}:7251/api/list/face/meet244/${widget.userId}'));
     if (response.statusCode == 200) {
-      Map<String, dynamic> data = jsonDecode(response.body);
-      List<String> keys = data.keys.toList();
-      keys = keys.reversed.toList();
-
-      Map<String, dynamic> reversedMap = {};
-
-      for (var key in keys) {
-        reversedMap[key] = data[key];
-      }
-
-      Map<String, List<int>> data2 = reversedMap.map((key, value) {
-        return MapEntry(
-            key, (value as List<dynamic>).map((e) => e as int).toList());
-      });
+      var data = jsonDecode(response.body);
 
       setState(() {
-        images = data2;
+        images = data;
       });
     } else {
       throw Exception('Failed to load images');
@@ -61,9 +182,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Future<void> fetchname() async {
     // wait for 0.1 seconds
     // await Future.delayed(const Duration(milliseconds: 100));
-    final response = await http.get(
-      Uri.parse('http://${widget.ip}:7251/api/face/name/meet244/${widget.userId}')
-    );
+    final response = await http.get(Uri.parse(
+        'http://${widget.ip}:7251/api/face/name/meet244/${widget.userId}'));
     if (response.statusCode == 200) {
       var d = json.decode(response.body);
       var n = d[0];
@@ -72,8 +192,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           name = n;
           cnt = d[1];
         });
-      }
-      else{
+      } else {
         setState(() {
           name = "Add a name";
           cnt = d[1];
@@ -85,9 +204,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> rename(String name) async {
-    final response = await http.get(
-      Uri.parse('http://${widget.ip}:7251/api/face/rename/meet244/${widget.userId}/${name}')
-    );
+    final response = await http.get(Uri.parse(
+        'http://${widget.ip}:7251/api/face/rename/meet244/${widget.userId}/${name}'));
     if (response.statusCode == 200) {
       setState(() {
         this.name = name;
@@ -116,88 +234,187 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        appBar:
-        AppBar(
-          title: GestureDetector(
-            onTap: () {
-              if (name != 'Add a name') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SearchScreen(widget.ip, name),
+        appBar: AppBar(
+          title: Text((selectedImages.isEmpty)
+              ? 'Profile'
+              : (selectedImages.length == 1)
+                  ? '${selectedImages.length} item'
+                  : '${selectedImages.length} items'),
+          leading: (selectedImages.length > 0)
+              ? GestureDetector(
+                  onTap: () {
+                    // Clear selection
+                    setState(() {
+                      selectedImages.length = 0;
+                    });
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.all(10.0),
+                    child: Icon(
+                      Icons.close,
+                      size: 32.0,
+                    ),
                   ),
-                );
-              }
-            },
-            child: Text(name == 'Add a name' ? '' : name),
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-          actions: [
-            PopupMenuButton<String>(
-              itemBuilder: (BuildContext context) {
-                return [
-                  PopupMenuItem<String>(
-                    value: 'rename',
-                    child: Text('Edit Name'),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'noname',
-                    child: Text('Remove Name'),
-                  ),
-                ];
-              },
-              onSelected: (String value) {
-                // Handle menu item selection
-                if (value == 'rename') {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      String newName = '';
-                      return AlertDialog(
-                        title: Text('Enter Name'),
-                        content: TextField(
-                          autofocus: true,
-                          maxLength: 30, // Add maximum length limit
-                          onChanged: (value) {
-                            newName = value;
-                          },
+                )
+              : (selectedImages.length == 0)
+                  ? GestureDetector(
+                      onTap: () {
+                        // Handle back button tap
+                        Navigator.pop(context);
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: Icon(
+                          Icons.arrow_back,
+                          size: 32.0,
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              if (newName.length >= 30) {
-                                return;
-                              } else {
-                                Navigator.of(context).pop();
-                                rename(newName);
-                              }
-                            },
-                            child: Text('Save'),
-                          ),
+                      ),
+                    )
+                  : null,
+          actions: <Widget>[
+            if (selectedImages.length > 0)
+              GestureDetector(
+                onTap: () {
+                  // Handle delete icon tap
+                  _onDelete();
+                },
+                child: Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: Icon(
+                    Icons.delete_outline,
+                    size: 32.0,
+                  ),
+                ),
+              ),
+            if (selectedImages.length > 0)
+              GestureDetector(
+                onTap: () {
+                  // Handle share icon tap
+                  _onSend();
+                },
+                child: Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: Icon(
+                    Icons.share_outlined,
+                    size: 32.0,
+                  ),
+                ),
+              ),
+            if (selectedImages.length > 0)
+              PopupMenuButton(
+                itemBuilder: (BuildContext context) {
+                  return [
+                    PopupMenuItem(
+                      child: Row(
+                        children: [
+                          Icon(Icons.add_outlined),
+                          SizedBox(width: 8.0),
+                          Text('Add to Album'),
                         ],
-                      );
-                    },
-                  );
-                  // Do something for Item 1
-                } else if (value == 'noname') {
-                  removeName();
-                }
-              },
-            ),
+                      ),
+                      onTap: () {
+                        // Handle edit option tap
+                        _onAdd();
+                      },
+                    ),
+                    PopupMenuItem(
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_calendar_outlined),
+                          SizedBox(width: 8.0),
+                          Text('Edit Date'),
+                        ],
+                      ),
+                      onTap: () {
+                        // Handle copy option tap
+                        _editDate();
+                      },
+                    ),
+                    PopupMenuItem(
+                      child: Row(
+                        children: [
+                          Icon(Icons.groups_outlined),
+                          SizedBox(width: 8.0),
+                          Text('add to shared'),
+                        ],
+                      ),
+                      onTap: () {
+                        // Handle move option tap
+                        _moveToFamily();
+                      },
+                    ),
+                  ];
+                },
+                child: Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: Icon(
+                    Icons.more_vert_outlined,
+                    size: 32.0,
+                  ),
+                ),
+              ),
+            if (selectedImages.isEmpty)
+              PopupMenuButton<String>(
+                itemBuilder: (BuildContext context) {
+                  return [
+                    PopupMenuItem<String>(
+                      value: 'rename',
+                      child: Text('Edit Name'),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'noname',
+                      child: Text('Remove Name'),
+                    ),
+                  ];
+                },
+                onSelected: (String value) {
+                  // Handle menu item selection
+                  if (value == 'rename') {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        String newName = '';
+                        return AlertDialog(
+                          title: Text('Enter Name'),
+                          content: TextField(
+                            autofocus: true,
+                            maxLength: 30, // Add maximum length limit
+                            onChanged: (value) {
+                              newName = value;
+                            },
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                if (newName.length >= 30) {
+                                  return;
+                                } else {
+                                  Navigator.of(context).pop();
+                                  rename(newName);
+                                }
+                              },
+                              child: Text('Save'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                    // Do something for Item 1
+                  } else if (value == 'noname') {
+                    removeName();
+                  }
+                },
+              ),
           ],
         ),
         body: SingleChildScrollView(
+          physics: ClampingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -206,8 +423,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: ClipOval(
-                      child: Image.network(
-                        'http://${widget.ip}:7251/api/face/image/meet244/${widget.userId}',
+                      child: CachedNetworkImage(
+                        imageUrl: 'http://${widget.ip}:7251/api/face/image/meet244/${widget.userId}',
                         width: 100.0,
                         height: 100.0,
                         fit: BoxFit.cover,
@@ -249,11 +466,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                             builder: (BuildContext context) {
                                               return AlertDialog(
                                                 title: Text('Error'),
-                                                content: Text('Name should be less than 30 characters.'),
+                                                content: Text(
+                                                    'Name should be less than 30 characters.'),
                                                 actions: [
                                                   TextButton(
                                                     onPressed: () {
-                                                      Navigator.of(context).pop();
+                                                      Navigator.of(context)
+                                                          .pop();
                                                     },
                                                     child: Text('OK'),
                                                   ),
@@ -276,7 +495,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         },
                         child: Text(
                           name,
-                          style: const TextStyle(fontSize: 25.0, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 25.0, fontWeight: FontWeight.bold),
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -296,6 +516,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 noImageIcon: Icons.image_outlined,
                 mainEmptyMessage: "No Images Found",
                 secondaryEmptyMessage: "Images will appear here",
+                isNormal: true,
+                onSelectionChanged: (selected) {
+                  setState(() {
+                    selectedImages = selected;
+                  });
+                },
               ),
             ],
           ),

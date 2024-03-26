@@ -1,9 +1,14 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:photoz/functions/selectedImages.dart';
 import 'package:photoz/screens/all_people.dart';
 import 'package:photoz/screens/favourite.dart';
 import 'package:photoz/screens/search.dart';
+import 'package:photoz/screens/settings.dart';
 import '../widgets/face.dart';
 
 class FaceListWidget extends StatefulWidget {
@@ -16,20 +21,19 @@ class FaceListWidget extends StatefulWidget {
 }
 
 class _FaceListWidgetState extends State<FaceListWidget> {
-  List<String> faces  = [];
-  Map<String, String> faceNames = {};
+  // List<String> faces  = [];
+  List<dynamic> faceNames = [];
   bool isfaceLoading = true;
   bool isalbumLoading = true;
 
-  List<String> autoAlbumsPlace = [];
-  List<String> autoAlbumsDocs = [];
-  List<String> autoAlbumsThings = [];
+  List<dynamic> autoAlbumsPlace = [];
+  List<dynamic> autoAlbumsDocs = [];
+  List<dynamic> autoAlbumsThings = [];
 
   @override
   void initState() {
     super.initState();
     fetchFaces();
-    fetchAutoAlbums();
   }
 
   Future<void> fetchFaces() async {
@@ -39,11 +43,14 @@ class _FaceListWidgetState extends State<FaceListWidget> {
         body: {'username': 'meet244'},
       );
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        faceNames = Map<String, String>.from(data);
-        // remove all keys that have value 'Unknown'
-        faceNames.removeWhere((key, value) => value == 'Unknown');
-        faces = faceNames.keys.toList();
+        var data = jsonDecode(response.body);
+        // faceNames = Map<String, String>.from(data);
+        data.removeWhere((face) => face[1].toString() == 'Unknown');
+        setState(() {
+          isfaceLoading = false;
+          faceNames = data;
+        });
+        // faces = faceNames.keys.toList();
       } else {
         throw Exception('Failed to load faces');
       }
@@ -53,6 +60,8 @@ class _FaceListWidgetState extends State<FaceListWidget> {
       setState(() {
         isfaceLoading = false;
       });
+
+      fetchAutoAlbums();
     }
   }
 
@@ -64,11 +73,13 @@ class _FaceListWidgetState extends State<FaceListWidget> {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        // print(data);
+        // print(data["Places"].runtimeType);
         setState(() {
+          autoAlbumsPlace = data["Places"];
+          autoAlbumsDocs = data['Documents'];
+          autoAlbumsThings = data["Things"];
           isalbumLoading = false;
-          autoAlbumsPlace = List<String>.from(data["Places"]);
-          autoAlbumsDocs = List<String>.from(data['Documents']);
-          autoAlbumsThings = List<String>.from(data["Things"]);
         });
       } else {
         throw Exception('Failed to load auto albums');
@@ -81,6 +92,35 @@ class _FaceListWidgetState extends State<FaceListWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('PicFolio'),
+        actions: <Widget>[
+          IconButton(
+            onPressed: () {
+              // Select image from gallery
+              var ret = getimage(widget.ip, context);
+              ret.then((value) {
+                if (value) {
+                  print('Image Uploaded');
+                }
+              });
+            },
+            icon: Icon(Icons.add_a_photo_outlined, size: 32.0),
+          ),
+          IconButton(
+            onPressed: () {
+              // Open settings page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsPage(widget.ip),
+                ),
+              );
+            },
+            icon: Icon(Icons.settings_outlined, size: 32.0),
+          ),
+        ],
+      ),
       body: isalbumLoading || isfaceLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -95,7 +135,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
                     },
                     child: Container(
                       margin: const EdgeInsets.symmetric(
-                          horizontal: 15.0, vertical: 10.0),
+                          horizontal: 15.0, vertical: 5),
                       height: 50.0,
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -146,7 +186,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
                   FaceList(
                     faceNames: faceNames,
                     ip: widget.ip,
-                    isSquared: true,
+                    // isSquared: true,
                   ),
                   makename('Auto Albums'),
                   makehorizonScroll(autoAlbumsPlace),
@@ -167,7 +207,8 @@ class _FaceListWidgetState extends State<FaceListWidget> {
         child: Text(name, style: const TextStyle(fontSize: 20.0)));
   }
 
-  Widget makehorizonScroll(List<String> listr) {
+  Widget makehorizonScroll(List<dynamic> listr) {
+    print(listr);
     return SizedBox(
       height: 150.0,
       width: double.infinity,
@@ -180,7 +221,8 @@ class _FaceListWidgetState extends State<FaceListWidget> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => FavouritesScreen(widget.ip, query:listr[index], qtype: 'auto albums'),
+                  builder: (context) => FavouritesScreen(widget.ip,
+                      query: listr[index][0], qtype: 'auto albums'),
                 ),
               );
             },
@@ -208,8 +250,9 @@ class _FaceListWidgetState extends State<FaceListWidget> {
                         ).createShader(bounds);
                       },
                       blendMode: BlendMode.srcATop,
-                      child: Image.network(
-                        'http://${widget.ip}:7251/api/autoalbum/meet244/${listr[index]}', // Replace with your image URL
+                      child: CachedNetworkImage(
+                        imageUrl:
+                            'http://${widget.ip}:7251/api/preview/meet244/${listr[index][1]}/${listr[index][2].replaceAll("-", '/')}', // Replace with your image URL
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
@@ -221,7 +264,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
                     left: 0,
                     right: 0,
                     child: Text(
-                      listr[index],
+                      listr[index][0],
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16.0,

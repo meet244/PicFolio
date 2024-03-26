@@ -57,6 +57,7 @@ cursor = None
 
 def open_dbs(username):
     global config, conn, cursor
+
     if not os.path.exists(f'{config["path"]}/{username}/data.db'):
         os.system(f'python dbmake.py {username}')
     conn = sqlite3.connect(f'{config["path"]}/{username}/data.db', check_same_thread=False)
@@ -239,14 +240,21 @@ def delete_photo(username, ids):
     return jsonify({"success":success, "failed":fail})
 
 # restore a photo
-@app.route('/api/restore/<string:username>/<string:ids>', methods=['POST'])
-def restore_photo(username, ids):
+@app.route('/api/restore', methods=['POST'])
+def restore_photo():
     # Logic to restore the photo from the database or storage
-    if username not in users:
-        return jsonify('User not found'), 404
     try:
-        ids = ids.split(',')
+        username = request.form['username']
+        if username not in users:
+            return jsonify('User not found'), 404
     except:
+        return jsonify('username not found'),404
+    
+    try:
+        ids = request.form['ids']
+        ids = ids.split(',')
+    except Exception as e:
+        print(e)
         return jsonify('Bad request'), 400
     open_dbs(username)
     success= []
@@ -410,7 +418,11 @@ def get_list():
     if cursor.rowcount == 0:
         return jsonify('Photo not found'), 404
     result = cursor.fetchall()
-    formatted_result = {row[0]: [int(id) for id in row[1].split(',')] for row in result}
+    
+    formatted_result =[]
+    for row in result[::-1]:
+        formatted_result.append([row[0], [[int(id)] for id in row[1].split(',')]])
+    # formatted_result = [{row[0]: [int(id) for id in row[1].split(',')] for row in result}]
     return jsonify(formatted_result)
 
 # list of only image ids
@@ -468,20 +480,23 @@ def get_details(username, photo_id):
 
         cursor.execute("SELECT asset_faces.face_id, faces.name FROM asset_faces INNER JOIN faces ON asset_faces.face_id = faces.id WHERE asset_faces.asset_id = ?", (photo_id,))
         faces = cursor.fetchall()
-        faces = {str(face[0]): 'Unknown' if len(face[1]) == 32 else face[1] for face in faces}
+        all_face = []
+        for face in faces:
+            all_face.append([face[0],'Unknown' if len(face[1]) == 32 else face[1]])
+        # faces = {str(face[0]): 'Unknown' if len(face[1]) == 32 else face[1] for face in faces}
         
         return jsonify({
             "name":name, 
             "tags":tags,
             "date":created.strftime("%d-%m-%Y"), 
-        "time": created.strftime("%I:%M %p"), 
+            "time": created.strftime("%I:%M %p"), 
             "format":format, 
             "compress":compress!=0, 
             "mp":str(round(width*height/1000000))+" MP", 
             "width":str(width), 
             "height":str(height), 
             "size":size,
-            "faces":faces,
+            "faces":all_face,
             "location":None
             })
     else:
@@ -512,7 +527,7 @@ def get_details(username, photo_id):
         "width":width, 
         "height":height, 
         "size":size,
-        "faces":faces,
+        "faces":all_face,
         "location":None})
 
 # change date of assets     
@@ -591,21 +606,22 @@ def get_deleted_list():
 
     open_dbs(username)
 
-    cursor.execute("SELECT id, deleted FROM assets WHERE deleted != 0 ORDER BY deleted DESC")
+    cursor.execute("SELECT DATE(deleted), GROUP_CONCAT(id) FROM assets WHERE deleted != 0 GROUP BY DATE(deleted) ORDER BY deleted ASC")
     # check if the photo exists
     if cursor.rowcount == 0:
         return jsonify('Photo not found'), 404
     
     result = cursor.fetchall()
-    formatted_result = {}
+    print(result)
+    formatted_result = []
     current_date = datetime.now().date()
-    for r in result:
-        asset_id, deleted_date = r
-        deleted_date = datetime.strptime(str(deleted_date), '%Y-%m-%d %H:%M:%S.%f').date()
-        difference = (deleted_date - current_date).days
-        if difference not in formatted_result:
-            formatted_result[difference] = []
-        formatted_result[difference].append(asset_id)
+    for r in result[::-1]:
+        date = r[0]
+        if date == None:
+            continue
+        date = datetime.strptime(date, '%Y-%m-%d').date()
+        formatted_result.append([str(abs((current_date-date).days)), [[int(id)] for id in r[1].split(',')]])
+    # formatted_result.sort(reverse=True)
     
     return jsonify(formatted_result)
 
@@ -670,16 +686,23 @@ def get_list_faces():
     username = ""
     try:
         username = request.form['username']
-    except:pass 
+    except:
+        return jsonify("username not found"),404
     print(username)
     open_dbs(username)
 
-    cursor.execute("SELECT id,name FROM faces")
-    # check if the photo exists
-    if cursor.rowcount == 0:
-        return jsonify('Face not found'), 404
-    result = cursor.fetchall()
-    formatted_result = {row[0]: row[1] if len(row[1]) < 32 else "Unknown" for row in result}
+    while True:
+        try:
+            cursor.execute("SELECT faces.id, faces.name FROM faces JOIN asset_faces ON faces.id = asset_faces.face_id GROUP BY faces.id, faces.name ORDER BY COUNT(asset_faces.asset_id) DESC")
+            result = cursor.fetchall()
+            break
+        except Exception as e:
+            if 'recursive' in str(e):
+                time.sleep(0.2)
+                continue
+            else:
+                return jsonify('Face not found'), 404
+    formatted_result = [[row[0], row[1] if len(row[1]) < 32 else "Unknown"] for row in result]
     return jsonify(formatted_result)
 
 # get a list of photos/videos grouped by date for a particular face
@@ -705,7 +728,9 @@ def get_grouped_list_face(username, face_id):
             continue
 
     print(result)
-    formatted_result = {row[0]: list(set([int(id) for id in row[1].split(',')])) for row in result}
+    formatted_result = []
+    for row in result[::-1]:
+        formatted_result.append([row[0], [[int(id)] for id in row[1].split(',')]])
     return jsonify(formatted_result)
 
 # Get a name of faces
@@ -812,35 +837,7 @@ def join_faces():
     conn.commit()
     return jsonify("Faces joined successfully")
 
-# Delete faces
-# @app.route('/api/face/delete/<int:face_id>', methods=['DELETE'])
-# def delete_faces(face_id):
-#     # Logic to delete the face
-#     username = ""
-#     try:
-#         username = request.form['username']
-#     except:pass
-#     open_dbs(username)
 
-#     cursor.execute("DELETE FROM faces WHERE id = ?", (face_id,))
-
-#     if cursor.rowcount == 0:
-#         return jsonify('Face not found'), 404
-
-#     os.remove(f'{config["path"]}/{username}/data/face/{face_id}.webp')
-
-#     # delete traing data dir
-
-#     for i in os.listdir(f"{config['path']}/{username}/data/training/{face_id}"):
-#         os.remove(f"{config['path']}/{username}/data/training/{face_id}/{i}")
-#     os.rmdir(f"{config['path']}/{username}/data/training/{face_id}")
-    
-#     cursor.execute("DELETE FROM asset_faces WHERE face_id = ?", (face_id,))
-
-#     # threading.Thread(target=background_funs.trainModel, args=(f"{config['path']}/{username}/data/training",), daemon=True).start()
-
-#     conn.commit()
-#     return jsonify("Faces deleted successfully")
 
 # Replace faces
 @app.route('/api/face/replace/<int:new_face_id>/<int:asset_id>/<int:x>/<int:y>/<int:w>/<int:h>/', methods=['POST'])
@@ -1025,14 +1022,20 @@ def get_album(username, album_id):
         return jsonify('User not found'), 404
     
     open_dbs(username)
-    cursor.execute("SELECT DATE(assets.created), GROUP_CONCAT(assets.id) FROM album_assets INNER JOIN assets ON album_assets.asset_id = assets.id WHERE album_assets.album_id = ? AND assets.deleted = 0 GROUP BY DATE(assets.created)", (album_id,))
+    cursor.execute("SELECT DATE(assets.created), GROUP_CONCAT(assets.id) FROM album_assets INNER JOIN assets ON album_assets.asset_id = assets.id WHERE album_assets.album_id = ? AND assets.deleted = 0 GROUP BY DATE(assets.created) ORDER BY assets.created DESC", (album_id,))
     # check if the photo exists
     if cursor.rowcount == 0:
         return jsonify('Photo not found'), 404
+    
+    formatted_result = []
     result = cursor.fetchall()
-    print(result)
-    formatted_result = {row[0]: [int(id) for id in row[1].split(',')] for row in result}
+    for row in result:
+        formatted_result.append([row[0], [[int(id)] for id in row[1].split(',')]])
     return jsonify(formatted_result)
+
+    # print(result)
+    # formatted_result = {row[0]: [int(id) for id in row[1].split(',')] for row in result}
+    # return jsonify(formatted_result)
 
 # rename an album
 @app.route('/api/album/rename', methods=['POST'])
@@ -1085,9 +1088,17 @@ def get_list_autoalbums():
     screenshot = [3562]
 
     for docs in [[book, "Books"], [id, "ID Cards"], [note, "Note"], [recipemenu, "Recipe & Menu"], [text, "Text"], [screenshot, "Screenshots"]]:
-        cursor.execute("SELECT * FROM asset_tags WHERE tag_id IN ({}) LIMIT 1".format(','.join('?' for _ in docs[0])), docs[0])
-        if cursor.fetchone() != None:
-            docums.append(docs[1])
+        cursor.execute("""
+            SELECT assets.id, DATE(assets.created)
+            FROM asset_tags
+            JOIN tags ON asset_tags.tag_id = tags.id
+            JOIN assets ON asset_tags.asset_id = assets.id AND assets.deleted = 0
+            WHERE asset_tags.tag_id IN ({})
+            LIMIT 1;
+        """.format(','.join('?' for _ in docs[0])), docs[0])
+        c = cursor.fetchone()
+        if c != None:
+            docums.append([docs[1],str(c[0]), c[1]])
 
     Places = []
 
@@ -1102,7 +1113,6 @@ def get_list_autoalbums():
     airplane = [40, 2068, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 2069]
     sky = [3722, 3723, 3724, 3725, 3726, 484, 1535, 2800]
     waterfall = [4431]
-    # fog = [1718, 1719, 3747, 3880, 2691]
     cars = [727, 729, 730, 183, 184, 185, 186, 187, 188, 189, 190, 191, 642, 643, 644, 645, 646, 188, 670, 674, 1486, 1572, 2667, 3150, 3282, 4002]
     temple = [156, 4111, 2696, 2900, 2094]
     birthday = [679, 446, 447, 448, 449, 450, 1227]
@@ -1114,15 +1124,24 @@ def get_list_autoalbums():
 
 
     for place_name in [[swimming, "Swimming"], [nightclub, "Nightclub"], [food, "Food"], [animals, "Animals"], [train, "Train"], [sunset, "Sunset"], [wedding, "Wedding"], [park, "Park"], [airplane, "Airplane"], [sky, "Sky"], [waterfall, "Waterfall"], [cars, "Cars"], [temple, "Temple"], [birthday, "Birthday"], [forests, "Forests"], [farms, "Farms"], [snow, "Snow"], [mountain, "Mountain"], [hike, "Hike"]]:
-        cursor.execute("SELECT * FROM asset_tags WHERE tag_id IN ({}) LIMIT 1".format(','.join('?' for _ in place_name[0])), place_name[0])
-        if cursor.fetchone() != None:
-            Places.append(place_name[1])
+        cursor.execute("""
+            SELECT assets.id, DATE(assets.created)
+            FROM asset_tags
+            JOIN tags ON asset_tags.tag_id = tags.id
+            JOIN assets ON asset_tags.asset_id = assets.id AND assets.deleted = 0
+            WHERE asset_tags.tag_id IN ({})
+            LIMIT 1;
+        """.format(','.join('?' for _ in place_name[0])), place_name[0])
+        c = cursor.fetchone()
+        # print(c)
+        if c != None:
+            Places.append([place_name[1],str(c[0]),c[1]])
         
 
 
 
     cursor.execute("""
-SELECT t.tag, COUNT(*) AS count
+SELECT t.tag, COUNT(*) AS count, a.id, DATE(a.created)
 FROM asset_tags AS at
 JOIN tags AS t ON at.tag_id = t.id
 JOIN assets AS a ON at.asset_id = a.id AND a.deleted = 0
@@ -1131,15 +1150,16 @@ ORDER BY count DESC
 LIMIT 25;
 """)
     Things = []
-    for row in cursor.fetchall():
+    c = cursor.fetchall()
+    # print(c)
+    for row in c:
         if len(Things) >= 10:break
         if not is_verb(row[0]):
-            Things.append(row[0].capitalize())
+            Things.append([row[0].capitalize(), str(row[2]), row[3]])
     # print(Things)
 
-
     return jsonify({"Places":Places, "Things":Things, "Documents":docums})
-    
+
 
 
     cursor.execute("SELECT id,name FROM auto_albums")
@@ -1262,85 +1282,133 @@ def get_autoalbum(username, auto_album_name:str):
     return send_file(fr'E:\Picfolio\meet244\preview\2021\12\21\130.webp', mimetype=f'image/webp')
 
 
+
+
 # --------------- FAMILY MOVE IN / OUT ---------------
 
-# Move personal assets to family
-@app.route('/api/family/move/<int:asset_id>', methods=['POST'])
-def move_to_family(asset_id):
+# add personal assets to shared
+@app.route('/api/shared/move', methods=['POST'])
+def add_to_shared():
     # get date and format of image
     username = ""
     try:
         username = request.form['username']
-    except:pass
-    open_dbs(username)
-
-    cursor.execute('''SELECT name, created, format FROM assets WHERE id = ?''', (asset_id,))
-    result = cursor.fetchone()
-    name = result[0]
-    date_time = result[1]
-    image_format = result[2]
-    # convert date_time to datetime object
-    date_time = datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f')
-    # move image to family/temp folder
-    os.rename(f'{config["path"]}/{username}/master/{date_time.year}/{date_time.month}/{date_time.day}/{asset_id}.{image_format}', f'{config["path"]}/family/temp/{asset_id}.{image_format}')
-    # update database
-    cursor.execute("DELETE FROM assets WHERE id = ?", (asset_id,))
-    conn.commit()
-
-    # insert into family database
-    open_dbs("family")
-    cursor.execute("INSERT INTO assets (name, format, created) VALUES (?, ?, ?)", (name, image_format, date_time))
-    conn.commit()
-    cursor.execute("SELECT MAX(id) FROM assets")
-    id = cursor.fetchone()[0]
-
-    # save the image to family/master and family/preview
-    os.rename(f'{config["path"]}/{username}/master/{date_time.year}/{date_time.month}/{date_time.day}/{asset_id}.{image_format}', f'{config["path"]}/family/master/{date_time.year}/{date_time.month}/{date_time.day}/{id}.{image_format}')
-    try:
-        os.rename(f'{config["path"]}/{username}/preview/{date_time.year}/{date_time.month}/{date_time.day}/{asset_id}.webp', f'family/preview/{date_time.year}/{date_time.month}/{date_time.day}/{id}.webp')
     except:
-        os.rename(f'{config["path"]}/{username}/preview/{date_time.year}/{date_time.month}/{date_time.day}/{asset_id}.gif', f'family/preview/{date_time.year}/{date_time.month}/{date_time.day}/{id}.gif')
-        
-    return jsonify("Image moved to family successfully")
+        return jsonify('username not found'),404
+    
+    try:
+        asset_id = request.form['asset_id'].split(',')
+    except:
+        return jsonify('Bad request'), 400
+    
+    open_dbs(username)
+    for i in asset_id:
+        cursor.execute("UPDATE assets SET shared = 1 WHERE id = ?", (i,))   
+    conn.commit()
 
-# Move family assets to personal
-@app.route('/api/family/moveback/<int:asset_id>', methods=['POST'])
-def moveback_to_personal(asset_id):
+    return jsonify("Image added to shared successfully")
+
+# remove assets from shared
+@app.route('/api/shared/moveback', methods=['POST'])
+def moveback_to_personal():
     # get date and format of image
     username = ""
     try:
         username = request.form['username']
-    except:pass
-    open_dbs("family")
-
-    cursor.execute('''SELECT name, created, format FROM assets WHERE id = ?''', (asset_id,))
-    result = cursor.fetchone()
-    name = result[0]
-    date_time = result[1]
-    image_format = result[2]
-    # convert date_time to datetime object
-    date_time = datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f')
-    # move image to family/temp folder
-    os.rename(f'{config["path"]}/family/master/{date_time.year}/{date_time.month}/{date_time.day}/{asset_id}.{image_format}', f'{username}/temp/{asset_id}.{image_format}')
-    # update database
-    cursor.execute("DELETE FROM assets WHERE id = ?", (asset_id,))
-    conn.commit()
-
-    # insert into user database
-    open_dbs(username)
-    cursor.execute("INSERT INTO assets (name, format, created) VALUES (?, ?, ?)", (name, image_format, date_time))
-    conn.commit()
-    cursor.execute("SELECT MAX(id) FROM assets")
-    id = cursor.fetchone()[0]
-
-    # save the image to user/master and user/preview
-    os.rename(f'{config["path"]}/family/master/{date_time.year}/{date_time.month}/{date_time.day}/{asset_id}.{image_format}', f'{username}/master/{date_time.year}/{date_time.month}/{date_time.day}/{id}.{image_format}')
-    try:
-        os.rename(f'{config["path"]}/family/preview/{date_time.year}/{date_time.month}/{date_time.day}/{asset_id}.webp', f'{username}/preview/{date_time.year}/{date_time.month}/{date_time.day}/{id}.webp')
     except:
-        os.rename(f'{config["path"]}/family/preview/{date_time.year}/{date_time.month}/{date_time.day}/{asset_id}.gif', f'{username}/preview/{date_time.year}/{date_time.month}/{date_time.day}/{id}.gif')
-        
-    return jsonify(f"Image moved to {username} successfully")
+        return jsonify('username not found'),404
+    
+    try:
+        asset_id = request.form['asset_id'].split(',')
+    except:
+        return jsonify('Bad request'), 400
+    
+    open_dbs(username)
+    for i in asset_id:
+        cursor.execute("UPDATE assets SET shared = 0 WHERE id = ?", (i,))
+    conn.commit()
+
+    return jsonify("Image moved back to personal successfully")
+
+# load shared images from a user
+@app.route('/api/list/shared', methods=['POST'])
+def get_shared():
+    # Logic to get the list of photos/videos from the database or storage for a particular face
+    try:
+        username = request.form['username']
+        of_user = request.form['of_user']
+        if of_user not in users:
+            return jsonify('User not found'), 404
+        if username not in users:
+            return jsonify('User not found'), 404
+    except:
+        return jsonify('username not found'),404
+    
+    open_dbs(of_user)
+    cursor.execute("SELECT DATE(created), GROUP_CONCAT(id) FROM assets WHERE shared = 1 AND deleted = 0 GROUP BY created ORDER BY created DESC")
+
+    r = cursor.fetchall()
+    if r == None or len(r) == 0:
+        return jsonify([])
+    formatted_result = []
+    for row in r:
+        formatted_result.append([row[0], [[int(id)] for id in row[1].split(',')]])
+    return jsonify(formatted_result)
+
+# get all shared images
+@app.route('/api/list/shared/all', methods=['POST'])
+def get_all_shared():
+    # Logic to get the list of photos/videos from shared
+    try:
+        username = request.form['username']
+        if username not in users:
+            return jsonify('User not found'), 404
+    except:
+        return jsonify('username not found'),404
+
+    all_shared = []
+
+    for u in users:
+        open_dbs(u)
+        cursor.execute("SELECT DATE(created), GROUP_CONCAT(id) FROM assets WHERE shared = 1 AND deleted = 0 GROUP BY created")
+
+        r = cursor.fetchall()
+        if r == None or len(r) == 0:
+            continue
+        for row in r:
+            all_shared.append([row[0], [[int(id),u] for id in row[1].split(',')]])
+    
+    # join all_shared with date and join same date images
+    all_shared = sorted(all_shared, key=lambda x: x[0], reverse=True)
+    formatted_result = []
+    formatted_result = []
+    for i in all_shared:
+        temp = []
+        for j in i[1]:
+            temp.append([j[0], j[1]])
+        formatted_result.append([i[0], temp])
+    return jsonify(formatted_result)
+
+# get list of shared users
+@app.route('/api/list/shared/users', methods=['POST'])
+def get_shared_users():
+    # Logic to get the list of shared users
+    # try:
+    #     username = request.form['username']
+    #     if username not in users:
+    #         return jsonify('User not found'), 404
+    # except:
+    #     return jsonify('username not found'),404
+
+    # shared_users = []
+
+    # for u in users:
+    #     open_dbs(u)
+    #     cursor.execute("SELECT COUNT(*) FROM assets WHERE shared = 1 AND deleted = 0 LIMIT 1")
+    #     if cursor.fetchone()[0] > 0:
+    #         shared_users.append(u)
+    return jsonify(users)
+
 
 
 
@@ -1372,24 +1440,22 @@ def search():
     except:
         qtype = "search"
 
+    print(username, query, qtype)
+
     open_dbs(username)
     query = query.lower().strip()
     # Logic to search the assets
 
     if query == "screenshot" or query == "screenshots":
         try:
-            cursor.execute("SELECT assets.id AS asset_id, assets.created FROM asset_tags AS at JOIN assets ON at.asset_id = assets.id WHERE at.tag_id = 3562 AND assets.deleted = 0")
+            cursor.execute("SELECT DATE(assets.created), GROUP_CONCAT(assets.id) AS asset_id FROM asset_tags AS at JOIN assets ON at.asset_id = assets.id WHERE at.tag_id = 3562 AND assets.deleted = 0 GROUP BY DATE(assets.created)")
             result = cursor.fetchall()
-            grouped_result = {}
-            for row in result:
-                created_date = row[1].split()[0]
-                asset_id = row[0]
-                if created_date in grouped_result:
-                    grouped_result[created_date].append(asset_id)
-                else:
-                    grouped_result[created_date] = [asset_id]
-            return jsonify(grouped_result)
-        except:
+            formatted_result =[]
+            for row in result[::-1]:
+                formatted_result.append([row[0], [[int(id)] for id in row[1].split(',')]])
+            return jsonify(formatted_result)
+        except Exception as e:
+            print(e)
             return jsonify({})
 
     if qtype == "buttons":
@@ -1397,32 +1463,24 @@ def search():
             return jsonify({})
         elif query == "favourite":
             try:
-                cursor.execute("SELECT created, id FROM assets WHERE liked = 1 AND deleted = 0")
+                cursor.execute("SELECT DATE(created), GROUP_CONCAT(id) FROM assets WHERE liked = 1 AND deleted = 0 GROUP BY DATE(created)")
                 result = cursor.fetchall()
-                grouped_result = {}
-                for row in result:
-                    created_date = row[0].split()[0]
-                    asset_id = row[1]
-                    if created_date in grouped_result:
-                        grouped_result[created_date].append(asset_id)
-                    else:
-                        grouped_result[created_date] = [asset_id]
-                return jsonify(grouped_result)
-            except:
+                print(result)
+                formatted_result =[]
+                for row in result[::-1]:
+                    formatted_result.append([row[0], [[int(id)] for id in row[1].split(',')]])
+                return jsonify(formatted_result)
+            except Exception as e:
+                print(e)
                 return jsonify({})   
         elif query == "blurry":
             try:
-                cursor.execute("SELECT id, created, blurry FROM assets WHERE blurry IS 1 AND deleted = 0")
+                cursor.execute("SELECT DATE(created), GROUP_CONCAT(id) FROM assets WHERE blurry = 1 AND deleted = 0 GROUP BY DATE(created)")
                 result = cursor.fetchall()
-                grouped_result = {}
-                for row in result:
-                    created_date = row[1].split()[0]
-                    asset_id = row[0]
-                    if created_date in grouped_result:
-                        grouped_result[created_date].append(asset_id)
-                    else:
-                        grouped_result[created_date] = [asset_id]
-                return jsonify(grouped_result)
+                formatted_result =[]
+                for row in result[::-1]:
+                    formatted_result.append([row[0], [[int(id)] for id in row[1].split(',')]])
+                return jsonify(formatted_result)
             except Exception as e:
                 print(e)
                 return jsonify({})
@@ -1482,41 +1540,32 @@ def search():
             tags = [2713, 2714, 2715, 2716, 2717, 2718, 2719, 2720, 2721, 2722, 2723, 2724, 2725, 2726, 2727, 2728, 2729, 2090, 2091, 2092, 2093, 967, 1605]
         elif query == "hike":
             tags = [2086, 2087, 2088, 2089, 966]        
-        elif len(query.split(" ")) <= 2:
+        else:
             try:
                 tagids = []
                 for tag in query.split(" "):
                     tagids.append(tag2id(tag))
                 print(tagids)
-                cursor.execute("SELECT asset_tags.asset_id, assets.created FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 ORDER BY assets.created ASC".format(','.join('?' for _ in tagids)), tagids)
+                cursor.execute("SELECT GROUP_CONCAT(asset_tags.asset_id), DATE(assets.created) FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 GROUP BY DATE(assets.created)".format(','.join('?' for _ in tagids)), tagids)
                 result = cursor.fetchall()
                 print(result)
-                if len(result) != 0 and result != None:
-                    grouped_result = {}
-                    for row in result:
-                        created_date = row[1].split()[0]
-                        asset_id = row[0]
-                        if created_date in grouped_result:
-                            grouped_result[created_date].append(asset_id)
-                        else:
-                            grouped_result[created_date] = [asset_id]
-                    return jsonify(grouped_result)
+                formatted_result = []
+                for row in result:
+                    formatted_result.append([row[1], [[int(id)] for id in row[0].split(',')]])
+
+                return jsonify(formatted_result)
             except:
                 return jsonify({})
-        
+
         if tags != []:
             try:
-                cursor.execute("SELECT asset_tags.asset_id, assets.created FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 ORDER BY assets.created ASC".format(','.join('?' for _ in tags)), tags)
+                cursor.execute("SELECT DATE(assets.created), GROUP_CONCAT(asset_tags.asset_id) FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE tag_id IN ({}) AND assets.deleted = 0 GROUP BY DATE(assets.created)".format(','.join('?' for _ in tags)), tags)
                 result = cursor.fetchall()
-                grouped_result = {}
+                formatted_result = []
+                print(result)   
                 for row in result:
-                    created_date = row[1].split()[0]
-                    asset_id = row[0]
-                    if created_date in grouped_result:
-                        grouped_result[created_date].append(asset_id)
-                    else:
-                        grouped_result[created_date] = [asset_id]
-                return jsonify(grouped_result)
+                    formatted_result.append([row[0], [[int(id)] for id in row[1].split(',')]])
+                return jsonify(formatted_result)
             except:
                 return jsonify({})
 
@@ -1526,13 +1575,7 @@ def search():
         cursor.execute("SELECT DATE(assets.created), assets.id FROM album_assets JOIN assets ON album_assets.asset_id = assets.id WHERE album_assets.album_id = ? AND (assets.deleted = 0 OR assets.deleted IS NULL) ORDER BY assets.created", (query,))
         result = cursor.fetchall()
         grouped_result = {}
-        for row in result:
-            created_date = row[0]
-            asset_id = row[1]
-            if created_date in grouped_result:
-                grouped_result[created_date].append(asset_id)
-            else:
-                grouped_result[created_date] = [asset_id]
+        # do if required
         return jsonify(grouped_result)
     
     isOnly = False
@@ -1568,10 +1611,10 @@ def search():
         tag_ids = [tag[0] for tag in tag_ids]
 
         # Retrieve asset_ids and created dates based on the tag_ids
-        cursor.execute("SELECT DISTINCT asset_id, created FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE asset_tags.tag_id IN ({})".format(','.join('?' for _ in tag_ids)), tag_ids)
+        cursor.execute("SELECT DISTINCT GROUP_CONCAT(asset_id), DATE(created) FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE asset_tags.tag_id IN ({}) GROUP BY DATE(created)".format(','.join('?' for _ in tag_ids)), tag_ids)
     elif len(tags) == 0:
         print("search with faces")
-        cursor.execute("SELECT DISTINCT assets.id, assets.created FROM asset_faces JOIN assets ON asset_faces.asset_id = assets.id WHERE asset_faces.face_id IN (SELECT id FROM faces WHERE LOWER(name) IN ({}) ) GROUP BY assets.id, assets.created HAVING COUNT(DISTINCT asset_faces.face_id) = {}".format(','.join(['?']*len(faces)), len(faces)), [f.lower() for f in faces])
+        cursor.execute("SELECT GROUP_CONCAT(assets.id), DATE(assets.created) FROM asset_faces JOIN assets ON asset_faces.asset_id = assets.id WHERE asset_faces.face_id IN (SELECT id FROM faces WHERE LOWER(name) IN ({}) ) GROUP BY DATE(assets.created) HAVING COUNT(DISTINCT asset_faces.face_id) = {}".format(','.join(['?']*len(faces)), len(faces)), [f.lower() for f in faces])
     else:
         # print("search with both tag and face")
         # cursor.execute("SELECT DISTINCT assets.id, assets.created FROM asset_faces JOIN assets ON asset_faces.asset_id = assets.id WHERE asset_faces.face_id IN (SELECT id FROM faces WHERE name IN {}) AND assets.id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN ({})) GROUP BY assets.id, assets.created".format(tuple(faces), ','.join('?' for _ in tags)), tags)
@@ -1585,15 +1628,10 @@ def search():
 
     result = cursor.fetchall()
     print(result)
-    grouped_result = {}
+    formatted_result = []
     for row in result:
-        created_date = row[1].split()[0]
-        asset_id = row[0]
-        if created_date in grouped_result:
-            grouped_result[created_date].append(asset_id)
-        else:
-            grouped_result[created_date] = [asset_id]
-    return jsonify(grouped_result)
+        formatted_result.append([row[1], [[int(row[0])]]])
+    return jsonify(formatted_result)
 
 
 def AiAearch(query):
@@ -1639,6 +1677,7 @@ def start_this():
     # threading.Thread(target=run_background_script, daemon=True).start()
     print("Server started")
     # serve(app, host="0.0.0.0", port=7251)
+    # app.run(host="0.0.0.0", port=7251, debug=False) # multiple bg threads here
     app.run(host="0.0.0.0", port=7251, debug=False) # multiple bg threads here
 
 def run_background_script():

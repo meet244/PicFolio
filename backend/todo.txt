@@ -1,14 +1,14 @@
-- IMAGE - DONE (Tagging not functioning)
-- VIDEO - PENDING (convert to gif pending) + video support on app
+# Functionalities
+- video support on app
+- dates in albums
+- AI search queries #backend
+- Make preview imagew/vid smaller #backend
+- add & remove faces from images and appbar of user view
+- download image/video on web + app
+- user handling
+- multi image sharing
+- settings Page
 
-- make albums on the app
-- albums #backend
 
-- places and things in #backend
-- places and things #frontend
-
-- family folder
-- family face matching #backend
-
-+ DUPLICATES = delete option 
-+ selection remaing
+# Future Scope
+- stats page
