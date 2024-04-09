@@ -2,8 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:photoz/globals.dart';
 import 'dart:convert';
 import 'package:photoz/widgets/gridImages.dart';
+
 
 // ignore: must_be_immutable
 class Duplicates extends StatefulWidget {
@@ -24,7 +26,7 @@ class _DuplicatesScreenState extends State<Duplicates> {
   @override
   void initState() {
     super.initState();
-    fetchImages();
+      fetchImages();
   }
 
   void toggleSelection(int imageId) {
@@ -41,9 +43,9 @@ class _DuplicatesScreenState extends State<Duplicates> {
 
   Future<void> fetchImages() async {
     final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/list/duplicate'),
+      Uri.parse('${Globals.ip}:7251/api/list/duplicate'),
       body: {
-        'username': 'meet244',
+        'username': Globals.username,
       },
     );
     if (response.statusCode == 200) {
@@ -67,7 +69,7 @@ class _DuplicatesScreenState extends State<Duplicates> {
   Future<bool> deleteImage(List<String> imageIds) async {
     var imgs = imageIds.join(',');
     final response = await http
-        .delete(Uri.parse('http://${widget.ip}:7251/api/delete/meet244/$imgs'));
+        .delete(Uri.parse('${Globals.ip}:7251/api/delete/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
       print('Image deleted');
       return true;
@@ -108,7 +110,12 @@ class _DuplicatesScreenState extends State<Duplicates> {
             ),
         ],
       ),
-      body: images.isNotEmpty
+      body: (Globals.username == '')
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : 
+      images.isNotEmpty
           ? Stack(children: [
               ListView.builder(
                 itemCount: images.length,
@@ -116,9 +123,9 @@ class _DuplicatesScreenState extends State<Duplicates> {
                   String title =
                       images[index][0].toString().replaceAll("-", "/");
                   String imageUrl1 =
-                      'http://${widget.ip}:7251/api/preview/meet244/${images[index][1] as int}/$title';
+                      '${Globals.ip}:7251/api/preview/${Globals.username}/${images[index][1] as int}/$title';
                   String imageUrl2 =
-                      'http://${widget.ip}:7251/api/preview/meet244/${images[index][2] as int}/$title';
+                      '${Globals.ip}:7251/api/preview/${Globals.username}/${images[index][2] as int}/$title';
                   return SizedBox(
                     // height: 250, // Adjust the height as needed
                     child: Column(
@@ -152,7 +159,6 @@ class _DuplicatesScreenState extends State<Duplicates> {
                                           MaterialPageRoute(
                                             builder: (context) =>
                                                 ImageDetailScreen(
-                                              widget.ip,
                                               images[index][1] as int,
                                               date: images[index][0]
                                                   .toString()
@@ -230,7 +236,6 @@ class _DuplicatesScreenState extends State<Duplicates> {
                                         MaterialPageRoute(
                                           builder: (context) =>
                                               ImageDetailScreen(
-                                            widget.ip,
                                             images[index][2] as int,
                                             date: images[index][0]
                                                 .toString()
@@ -332,7 +337,7 @@ class _DuplicatesScreenState extends State<Duplicates> {
 
   Future<List<int>> fetchPreviewImage(int imageId, String date) async {
     final response = await http.get(Uri.parse(
-        'http://${widget.ip}:7251/api/preview/meet244/$imageId/${date}'));
+        '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId/${date}'));
     if (response.statusCode == 200) {
       return response.bodyBytes;
     } else {

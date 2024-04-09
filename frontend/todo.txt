@@ -1,0 +1,10 @@
+# Functionalities
+
+- auto load data on scroll
+NA - download image/video on web + app
+- user handling
+- logout working
+NA - settings Page working
+
+# Future Scope
+- stats page

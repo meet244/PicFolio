@@ -1,7 +1,6 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import 'dart:async';
@@ -11,10 +10,14 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:photoz/globals.dart';
+import 'package:photoz/screens/all_people.dart';
 import 'package:photoz/widgets/face.dart';
-import 'package:pod_player/pod_player.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:appinio_video_player/appinio_video_player.dart';
 import 'dart:io';
+
+import 'package:skeletonizer/skeletonizer.dart';
 
 // ignore: must_be_immutable
 class ImageGridView extends StatefulWidget {
@@ -27,6 +30,7 @@ class ImageGridView extends StatefulWidget {
   bool isBin;
   bool isNormal;
   bool isAlbum;
+  bool bottomload;
   String albumOrFaceId;
   final Function(List<int>) onSelectionChanged;
 
@@ -41,6 +45,7 @@ class ImageGridView extends StatefulWidget {
     this.isBin = false,
     this.isNormal = false,
     this.isAlbum = false,
+    this.bottomload = false,
     this.albumOrFaceId = '0',
     required this.onSelectionChanged,
   });
@@ -50,18 +55,21 @@ class ImageGridView extends StatefulWidget {
 }
 
 class _ImageGridViewState extends State<ImageGridView> {
-  Map<int, List<int>> loadedImages = {};
   final List<int> _selectedImages = [];
+  bool _enabled = true;
 
   Future<List<int>> fetchPreviewImage(int imageId, {String date = ''}) async {
     // print(date);
     // print(imageId);
     date = date.replaceAll('-', '/');
-    String url = 'http://${widget.ip}:7251/api/preview/meet244/$imageId/$date';
+    String url =
+        '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId/$date';
     if (widget.isBin || date == '') {
-      url = 'http://${widget.ip}:7251/api/preview/meet244/$imageId';
+      url =
+          '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId';
     } else {
-      url = 'http://${widget.ip}:7251/api/preview/meet244/$imageId/$date';
+      url =
+          '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId/$date';
     }
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
@@ -83,128 +91,10 @@ class _ImageGridViewState extends State<ImageGridView> {
     });
   }
 
-  Future<void> _onSend() async {
-    // Implement your send logic here
-    print(_selectedImages);
-
-    try {
-      final tempDir = await getTemporaryDirectory();
-
-      // Create temporary files for each image
-      final tempFiles = <File>[];
-      for (int i = 0; i < _selectedImages.length; i++) {
-        final imageId = _selectedImages[i];
-        final mainImageBytes = await fetchPreviewImage(imageId);
-        loadedImages[imageId] = mainImageBytes;
-        // Save the main image to a temporary file
-        final tempFile = File('${tempDir.path}/temp_image_$i.png');
-        await tempFile.writeAsBytes(mainImageBytes);
-        tempFiles.add(tempFile);
-      }
-
-      // Share the multiple images using the share_plus package
-      await Share.shareFiles(
-        tempFiles.map((file) => file.path).toList(),
-        text: 'I shared these images from my PicFolio app. Try them out!',
-        subject: 'Image Sharing',
-      );
-    } catch (e) {
-      print('Error sharing images: $e');
-      // Handle the error, e.g., show a snackbar or log the error
-    }
-
-    setState(() {
-      _selectedImages.clear(); // Clear selected images after sending
-    });
-  }
-
-  Future<void> _onDelete() async {
-    // Implement your delete logic here
-    print(_selectedImages);
-
-    // Call delete image API here
-    var imgs = _selectedImages.join(',');
-    final response = await http
-        .delete(Uri.parse('http://${widget.ip}:7251/api/delete/meet244/$imgs'));
-    if (response.statusCode == 200) {
-      print('Image deleted');
-      // remove the deleted images from the grid
-      setState(() {
-        _selectedImages.clear();
-      });
-    } else {
-      throw Exception('Failed to delete image');
-    }
-  }
-
-  void _onAdd() {
-    // Implement your add logic here
-    print(_selectedImages);
-    setState(() {
-      _selectedImages.clear(); // Clear selected images after sending
-    });
-  }
-
-  Future<void> _editDate() async {
-    // Implement your edit date logic here
-    // get a date from calendar
-    final DateTime? picked = await showDatePicker(
-        context: context,
-        // initialDate: selectedDate,
-        firstDate: DateTime(2015, 8),
-        lastDate: DateTime(2101));
-    if (picked == null) {
-      return;
-    }
-    var date = (picked.toString().split(" ")[0]);
-    var imgs = _selectedImages.join(',');
-    final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/redate'),
-      body: {
-        'username': 'meet244',
-        'date': date,
-        'id': imgs,
-      },
-    );
-    if (response.statusCode == 200) {
-      print('Dates Updated');
-      setState(() {
-        _selectedImages.clear();
-      });
-      // remove the deleted images from the grid
-    } else {
-      throw Exception('Failed to update date');
-    }
-
-    setState(() {
-      _selectedImages.clear(); // Clear selected images after sending
-    });
-  }
-
-  Future<void> _moveToFamily() async {
-    // Implement your move to family logic here
-    print(_selectedImages);
-    final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/shared/move'),
-      body: {
-        'username': 'meet244',
-        'asset_id': _selectedImages.join(','),
-      },
-    );
-    if (response.statusCode == 200) {
-      print('Image Shared');
-    } else {
-      throw Exception('Failed to move to share');
-    }
-    setState(() {
-      _selectedImages.clear(); // Clear selected images after sending
-    });
-  }
-
   Future<void> restoreImage() async {
     var imgs = _selectedImages.join(',');
-    final response = await http
-        .post(Uri.parse('http://${widget.ip}:7251/api/restore/meet244/$imgs'));
+    final response = await http.post(Uri.parse(
+        '${Globals.ip}:7251/api/restore/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
       print('Image restored');
       setState(() {
@@ -217,8 +107,8 @@ class _ImageGridViewState extends State<ImageGridView> {
 
   Future<void> removeAlbumImages() async {
     final response = await http
-        .post(Uri.parse('http://${widget.ip}:7251/api/album/remove'), body: {
-      'username': 'meet244',
+        .post(Uri.parse('${Globals.ip}:7251/api/album/remove'), body: {
+      'username': '${Globals.username}',
       'album_id': widget.albumOrFaceId.toString(),
       'asset_id': _selectedImages.join(','),
     });
@@ -233,6 +123,18 @@ class _ImageGridViewState extends State<ImageGridView> {
   }
 
   @override
+  void initState() {
+    super.initState();
+
+    Timer(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      setState(() {
+        _enabled = false;
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (widget.images.isEmpty) {
       return NothingMessage(
@@ -243,243 +145,215 @@ class _ImageGridViewState extends State<ImageGridView> {
     }
     return Stack(
       children: [
-        ListView.builder(
-          physics: NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          itemCount: widget.images.length,
-          itemBuilder: (context, index) {
-            var entry = widget.images[index];
-            var allChecked = true;
-            for (var item in entry[1]) {
-              if (!_selectedImages.contains(item[0] as int)) {
-                allChecked = false;
-                break;
+        Skeletonizer(
+          enabled: _enabled,
+          child: ListView.builder(
+            physics: NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: widget.bottomload
+                ? widget.images.length + 1
+                : widget.images.length,
+            itemBuilder: (context, index) {
+              if (widget.bottomload && index == widget.images.length) {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
               }
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          widget.isBin
-                              ? '${entry[0]} days left'
-                              : intl.DateFormat('d MMM yyyy')
-                                  .format(DateTime.parse(entry[0])),
-                          style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            if (allChecked) {
-                              setState(() {
-                                for (var item in entry[1]) {
-                                  _selectedImages.remove(item[0] as int);
-                                }
-                              });
-                            } else {
-                              setState(() {
-                                for (var item in entry[1]) {
-                                  _selectedImages.add(item[0] as int);
-                                }
-                              });
-                            }
-                          },
-                          child: Icon(
-                            allChecked
-                                ? Icons.check_circle
-                                : Icons.check_circle_outline,
-                            size: 30,
-                            color: allChecked ? Colors.blue : Colors.grey,
-                          ),
-                        ),
-                      ],
-                    )),
-                GridView.count(
-                  crossAxisCount: widget.gridCount,
-                  crossAxisSpacing: 3,
-                  mainAxisSpacing: 3,
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  children: List.generate((entry[1] as List<dynamic>).length,
-                      (index) {
-                    var item = entry[1][index] as List<dynamic>;
-                    var imageId = item[0] as int;
-
-                    return GestureDetector(
-                      onTap: () {
-                        if (_selectedImages.isNotEmpty) {
-                          _toggleSelection(imageId);
-                        } else {
-                          // Open the image normally
-                          Navigator.push(
-                              context,
-                              widget.isBin
-                                  ? MaterialPageRoute(
-                                      builder: (context) => ImageDetailScreen(
-                                        widget.ip,
-                                        imageId,
-                                        date: null,
-                                      ),
-                                    )
-                                  : MaterialPageRoute(
-                                      builder: (context) => ImageDetailScreen(
-                                        widget.ip,
-                                        imageId,
-                                        date: entry[0].replaceAll('-', '/'),
-                                      ),
-                                    ));
-                        }
-                      },
-                      onLongPress: () {
-                        _toggleSelection(imageId);
-                      },
-                      child: Stack(
+              var entry = widget.images[index];
+              var allChecked = true;
+              for (var item in entry[1]) {
+                if (!_selectedImages.contains(item[0] as int)) {
+                  allChecked = false;
+                  break;
+                }
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          CachedNetworkImage(
-                            imageUrl:
-                                'http://${widget.ip}:7251/api/preview/meet244/$imageId',
-                            placeholder: (context, url) => Center(
-                                child: const CircularProgressIndicator()),
-                            errorWidget: (context, url, error) => Center(
-                                child: const Icon(
-                              Icons.error,
-                              color: Colors.red,
-                            )),
-                            imageBuilder: (context, imageProvider) => Container(
-                              decoration: BoxDecoration(
-                                image: DecorationImage(
-                                  image: imageProvider,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
+                          Text(
+                            widget.isBin
+                                ? '${entry[0]} days left'
+                                : intl.DateFormat('d MMM yyyy')
+                                    .format(DateTime.parse(entry[0])),
+                            style: const TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              if (allChecked) {
+                                setState(() {
+                                  for (var item in entry[1]) {
+                                    _selectedImages.remove(item[0] as int);
+                                  }
+                                  widget.onSelectionChanged(_selectedImages);
+                                });
+                              } else {
+                                setState(() {
+                                  for (var item in entry[1]) {
+                                    if (!_selectedImages
+                                        .contains(item[0] as int)) {
+                                      _selectedImages.add(item[0] as int);
+                                    }
+                                  }
+                                  widget.onSelectionChanged(_selectedImages);
+                                });
+                              }
+                            },
+                            child: Icon(
+                              allChecked
+                                  ? Icons.check_circle
+                                  : Icons.check_circle_outline,
+                              size: 30,
+                              color: Colors.grey,
                             ),
                           ),
-                          if (_selectedImages.contains(imageId))
-                            Positioned.fill(
-                              child: Container(
-                                color: Colors.black.withOpacity(0.5),
-                                child: Icon(
-                                  Icons.check_circle,
-                                  color: Colors.white,
-                                  size: 50,
+                        ],
+                      )),
+                  GridView.count(
+                    crossAxisCount: widget.gridCount,
+                    crossAxisSpacing: 3,
+                    mainAxisSpacing: 3,
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    children: List.generate((entry[1] as List<dynamic>).length,
+                        (index) {
+                      var item = entry[1][index] as List<dynamic>;
+                      var imageId = item[0] as int;
+
+                      return GestureDetector(
+                        onTap: () {
+                          if (_selectedImages.isNotEmpty) {
+                            _toggleSelection(imageId);
+                          } else {
+                            List<int> showImages = [];
+                            for (var item in widget.images) {
+                              for (var img in item[1]) {
+                                showImages.add(img[0] as int);
+                              }
+                            }
+                            // Open the image normally
+                            Navigator.push(
+                                context,
+                                widget.isBin
+                                    ? MaterialPageRoute(
+                                        builder: (context) => ImageDetailScreen(
+                                          imageId,
+                                          date: null,
+                                          allImages: showImages,
+                                        ),
+                                      )
+                                    : MaterialPageRoute(
+                                        builder: (context) =>
+                                            (item.length >= 2 &&
+                                                    item[1] != null)
+                                                ? ImageDetailScreen(imageId,
+                                                    ofuser: item[1],
+                                                    allImages: showImages,
+                                                    date: entry[0]
+                                                        .replaceAll('-', '/'))
+                                                : ImageDetailScreen(
+                                                    imageId,
+                                                    allImages: showImages,
+                                                    date: entry[0]
+                                                        .replaceAll('-', '/'),
+                                                  ),
+                                      ));
+                          }
+                        },
+                        onLongPress: () {
+                          _toggleSelection(imageId);
+                        },
+                        child: Stack(
+                          children: [
+                            Hero(
+                              tag: imageId.toString(),
+                              child: CachedNetworkImage(
+                                imageUrl: (item.length >= 2 && item[1] != null)
+                                    ? '${Globals.ip}:7251/api/preview/${item[1]}/$imageId'
+                                    : '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId',
+                                placeholder: (context, url) => Center(
+                                  child: const CircularProgressIndicator(),
+                                ),
+                                errorWidget: (context, url, error) => Center(
+                                  child: const Icon(
+                                    Icons.error,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                                imageBuilder: (context, imageProvider) =>
+                                    Container(
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      image: imageProvider,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                        ],
-                      ),
-                    );
-                  }),
-                ),
-              ],
-            );
-          },
+                            if (_selectedImages.contains(imageId))
+                              Positioned.fill(
+                                child: Container(
+                                  color: Colors.black.withOpacity(0.5),
+                                  child: Icon(
+                                    Icons.check_circle,
+                                    color: Colors.white,
+                                    size: 50,
+                                  ),
+                                ),
+                              ),
+                            if (item.length > 2 && item[2] != null)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.bottomLeft,
+                                      end: Alignment.center,
+                                      colors: [
+                                        Colors.black.withOpacity(1),
+                                        Colors.transparent
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (item.length > 2 && item[2] != null)
+                              Positioned(
+                                bottom: 7,
+                                left: 7,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.play_circle_fill,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      item[2].toString(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
-        // if (_selectedImages.isNotEmpty)
-        //   Positioned(
-        //     bottom: 0,
-        //     left: 0,
-        //     right: 0,
-        //     child: Container(
-        //       decoration: BoxDecoration(
-        //         color: Colors.grey[200],
-        //         borderRadius: const BorderRadius.only(
-        //           topLeft: Radius.circular(10),
-        //           topRight: Radius.circular(10),
-        //         ),
-        //       ),
-        //       padding: const EdgeInsets.all(8.0),
-        //       child: Row(
-        //         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        //         children: [
-        //           if (widget.isBin)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _onDelete,
-        //                   icon: const Icon(Icons.delete_outline),
-        //                 ),
-        //                 Text('Delete Premanently'),
-        //               ],
-        //             ),
-        //           if (widget.isBin)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: restoreImage,
-        //                   icon: const Icon(
-        //                       Icons.settings_backup_restore_outlined),
-        //                 ),
-        //                 Text('Restore'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _onSend,
-        //                   icon: const Icon(Icons.share_outlined),
-        //                 ),
-        //                 Text('Share'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _onDelete,
-        //                   icon: const Icon(Icons.delete_outline),
-        //                 ),
-        //                 Text('Delete'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _onAdd,
-        //                   icon: const Icon(Icons.add_outlined),
-        //                 ),
-        //                 Text('Add to'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _editDate,
-        //                   icon: const Icon(Icons.edit_calendar_outlined),
-        //                 ),
-        //                 Text('Edit Date'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _moveToFamily,
-        //                   icon: const Icon(Icons.groups_2_outlined),
-        //                 ),
-        //                 Text('Move to Family'),
-        //               ],
-        //             ),
-        //           if (widget.isAlbum)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: removeAlbumImages,
-        //                   icon: const Icon(Icons.close_outlined),
-        //                 ),
-        //                 Text('Remove from Album'),
-        //               ],
-        //             ),
-        //         ],
-        //       ),
-        //     ),
-        //   ),
       ],
     );
   }
@@ -526,10 +400,12 @@ class NothingMessage extends StatelessWidget {
 
 class ImageDetailScreen extends StatefulWidget {
   final int imageId;
-  final String ip;
   final String? date;
+  final List<int> allImages;
+  final String? ofuser;
 
-  const ImageDetailScreen(this.ip, this.imageId, {this.date, super.key});
+  ImageDetailScreen(this.imageId,
+      {this.date, this.allImages = const [], this.ofuser, super.key});
 
   @override
   _ImageDetailScreenState createState() => _ImageDetailScreenState();
@@ -544,43 +420,53 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   bool isliked = false;
   bool isImage = true;
 
-  late final PodPlayerController controller;
-  final videoTextFieldCtr = TextEditingController();
+  int currentIndex = 0;
+
+  var imageDetails;
+
+  late VideoPlayerController videoPlayerController;
+  late CustomVideoPlayerController _customVideoPlayerController;
+
+  // late VideoPlayerController _controller;
+  // late Future<void> _initializeVideoPlayerFuture;
 
   @override
   void initState() {
     super.initState();
-    _previewImageFuture = fetchPreviewImage();
-    // _mainImageFuture = fetchMainImage();
-    // _mainImageFuture.then((_) {
-    //   setState(() {
-    //     isMainImageLoaded = true;
-    //   });
-    // });
-    isImageLiked(widget.imageId);
-    // SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack,
-    //     overlays: [SystemUiOverlay.top]);
 
-    controller = PodPlayerController(
-      playVideoFrom: PlayVideoFrom.network(
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-      ),
-    )..initialise();
+    currentIndex = widget.allImages.indexOf(widget.imageId);
+
+    _previewImageFuture = fetchPreviewImage();
+    if (widget.ofuser == null) {
+      isImageLiked(widget.imageId);
+    }
+
+    // SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack,overlays: [SystemUiOverlay.top]);
+
+    videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(
+        "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4"))
+      ..initialize().then((value) => setState(() {}));
+    _customVideoPlayerController = CustomVideoPlayerController(
+      context: context,
+      videoPlayerController: videoPlayerController,
+    );
+
     super.initState();
   }
 
   @override
   void dispose() {
+    if (!isImage) {
+      // _controller.dispose();
+      _customVideoPlayerController.dispose();
+    }
     super.dispose();
     // SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
     //     overlays: [SystemUiOverlay.top]);
-
-    controller.dispose();
   }
 
-  void initPhoto() {
-    print('Initializing Photo');
-    _mainImageFuture = fetchMainImage();
+  void initPhoto({bool nodate = false}) {
+    _mainImageFuture = fetchMainImage(nodate: nodate);
     _mainImageFuture.then((_) {
       setState(() {
         isMainImageLoaded = true;
@@ -588,32 +474,56 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     });
   }
 
-  Future<void> initVideo() async {
-    print('Initializing Video');
-    try {
-      snackBar('Loading....');
-      FocusScope.of(context).unfocus();
-      await controller.changeVideo(
-        playVideoFrom: PlayVideoFrom.network('http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}/${widget.date}'),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    } catch (e) {
-      snackBar('Unable to load,\n $e');
+  Future<void> initVideo({bool nodate = false}) async {
+    print('Init video');
+    print(widget.allImages[currentIndex]);
+    // videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url))
+    String url = (widget.ofuser != null)
+        ? '${Globals.ip}:7251/api/asset/${widget.ofuser}/${widget.allImages[currentIndex]}'
+        : '${Globals.ip}:7251/api/asset/${Globals.username}/${widget.allImages[currentIndex]}';
+
+    if (!nodate) {
+      url = url + '/${widget.date}';
     }
+
+    videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url))
+      ..initialize().then((value) => setState(() {}));
+    _customVideoPlayerController = CustomVideoPlayerController(
+      context: context,
+      videoPlayerController: videoPlayerController,
+    );
+
     setState(() {
       isImage = false;
     });
   }
 
-  void snackBar(String text) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(text),
-        ),
-      );
+  Future<void> addFace(String faceId) async {
+    final response = await http
+        .post(Uri.parse('${Globals.ip}:7251/api/face/add'), body: {
+      'username': '${Globals.username}',
+      'asset_id': widget.imageId.toString(),
+      'face_id': faceId,
+    });
+    if (response.statusCode == 200) {
+      print('Face added');
+    } else {
+      throw Exception('Failed to add face');
+    }
+  }
+
+  Future<void> removeFace(String faceId) async {
+    final response = await http
+        .post(Uri.parse('${Globals.ip}:7251/api/face/remove'), body: {
+      'username': '${Globals.username}',
+      'asset_id': widget.imageId.toString(),
+      'face_id': faceId,
+    });
+    if (response.statusCode == 200) {
+      print('Face removed');
+    } else {
+      throw Exception('Failed to remove face');
+    }
   }
 
   @override
@@ -622,60 +532,86 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
         backgroundColor: Colors.black,
         body: Stack(
           children: [
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  showBottomBar = !showBottomBar;
-                });
-              },
-              child: isImage
-                  ? FutureBuilder(
-                      future: isMainImageLoaded
-                          ? _mainImageFuture
-                          : _previewImageFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        } else if (snapshot.hasError) {
-                          return Center(
-                              child: Text('Error: ${snapshot.error}'));
-                        } else if (snapshot.hasData) {
-                          return (isImage)
-                              ? PhotoView(
-                                  imageProvider: MemoryImage(
-                                      Uint8List.fromList(snapshot.data!)),
-                                  minScale: PhotoViewComputedScale.contained,
-                                  maxScale:
-                                      PhotoViewComputedScale.covered * 5.0,
-                                )
-                              : Center(
-                                  child: Text('Image not supported'),
-                                );
-                        } else {
-                          return SizedBox(); // Return an empty widget if there's no data
-                        }
-                      },
-                    )
-                  : Center(
-                      child: PodVideoPlayer(
-                        controller: controller,
-                        podProgressBarConfig: const PodProgressBarConfig(
-                          padding: kIsWeb
-                              ? EdgeInsets.zero
-                              : EdgeInsets.only(
-                                  bottom: 20,
-                                  left: 20,
-                                  right: 20,
+            SafeArea(
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      showBottomBar = !showBottomBar;
+                    });
+                  },
+                  child: PageView.builder(
+                    itemCount: widget.allImages.length,
+                    controller: PageController(initialPage: currentIndex),
+                    onPageChanged: (index) {
+                      print('Page changed to index: $index');
+                      print('Current index: $currentIndex');
+                      setState(() {
+                        imageDetails = null;
+                        currentIndex = index;
+                        _previewImageFuture = fetchPreviewImage(nodate: true);
+                        isImageLiked(widget.allImages[currentIndex]);
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      return (isImage)
+                          ? FutureBuilder(
+                              future: isMainImageLoaded
+                                  ? _mainImageFuture
+                                  : _previewImageFuture,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                } else if (snapshot.hasError) {
+                                  return Center(
+                                      child: Text('Error: ${snapshot.error}'));
+                                } else if (snapshot.hasData) {
+                                  return Hero(
+                                    tag: widget.allImages[currentIndex]
+                                        .toString(),
+                                    child: Stack(children: [
+                                      PhotoView(
+                                        imageProvider: MemoryImage(
+                                            Uint8List.fromList(snapshot.data!)),
+                                        minScale:
+                                            PhotoViewComputedScale.contained,
+                                        maxScale:
+                                            PhotoViewComputedScale.covered *
+                                                5.0,
+                                      ),
+                                      if (!isMainImageLoaded)
+                                        Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                    ]),
+                                  );
+                                } else {
+                                  return SizedBox(); // Return an empty widget if there's no data
+                                }
+                              },
+                            )
+                          : Padding(
+                              padding: EdgeInsets.symmetric(vertical: 65),
+                              child: AspectRatio(
+                                aspectRatio:
+                                    videoPlayerController.value.aspectRatio,
+                                child: Hero(
+                                  tag:
+                                      widget.allImages[currentIndex].toString(),
+                                  child: CustomVideoPlayer(
+                                    customVideoPlayerController:
+                                        _customVideoPlayerController,
+                                  ),
                                 ),
-                          playingBarColor: Colors.blue,
-                          circleHandlerColor: Colors.blue,
-                          backgroundColor: Colors.blueGrey,
-                        ),
-                      ),
-                    ),
+                              ),
+                            );
+                    },
+                  ),
+                ),
+              ),
             ),
             AnimatedOpacity(
               opacity: showBottomBar ? 1.0 : 0.0,
@@ -684,44 +620,56 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                 alignment: Alignment.bottomCenter,
                 child: Container(
                   padding: EdgeInsets.all(16),
-                  color: Colors.transparent,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black54,
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      IconButton(
-                        onPressed: () {
-                          // ask for confirmation
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: Text('Confirmation'),
-                                content: Text(
-                                    'Are you sure you want to delete this image?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                    child: Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      // Call delete image API here
-                                      deleteImage([widget.imageId.toString()]);
-                                      Navigator.of(context).pop();
-                                      // go to previous screen with message that imageid is deleted
-                                      Navigator.pop(context, widget.imageId);
-                                    },
-                                    child: Text('Delete'),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
-                        icon: Icon(Icons.delete_outline, color: Colors.white),
-                      ),
+                      if (widget.ofuser == null ||
+                          widget.ofuser == Globals.username)
+                        IconButton(
+                          onPressed: () {
+                            // ask for confirmation
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text('Confirmation'),
+                                  content: Text(
+                                      'Are you sure you want to delete this image?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        // Call delete image API here
+                                        deleteImage(
+                                            [widget.imageId.toString()]);
+                                        Navigator.of(context).pop();
+                                        // go to previous screen with message that imageid is deleted
+                                        Navigator.pop(context, widget.imageId);
+                                      },
+                                      child: Text('Delete'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          icon: Icon(Icons.delete_outline, color: Colors.white),
+                        ),
                       if (widget.date != null)
                         IconButton(
                           onPressed: () {
@@ -730,23 +678,25 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                           icon: Icon(Icons.share_outlined, color: Colors.white),
                         ),
                       if (widget.date != null)
-                        if (isliked)
-                          IconButton(
-                            onPressed: () {
-                              // make API call to unlike image
-                              likeImage(widget.imageId);
-                            },
-                            icon: Icon(Icons.favorite, color: Colors.red),
-                          )
-                        else
-                          IconButton(
-                            onPressed: () {
-                              // make API call to like image
-                              likeImage(widget.imageId);
-                            },
-                            icon: Icon(Icons.favorite_outline,
-                                color: Colors.white),
-                          ),
+                        if (widget.ofuser == null ||
+                            widget.ofuser == Globals.username)
+                          if (isliked)
+                            IconButton(
+                              onPressed: () {
+                                // make API call to unlike image
+                                likeImage(widget.imageId);
+                              },
+                              icon: Icon(Icons.favorite, color: Colors.red),
+                            )
+                          else
+                            IconButton(
+                              onPressed: () {
+                                // make API call to like image
+                                likeImage(widget.imageId);
+                              },
+                              icon: Icon(Icons.favorite_outline,
+                                  color: Colors.white),
+                            ),
                       if (widget.date == null)
                         IconButton(
                           onPressed: () {
@@ -767,54 +717,56 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
               opacity: showBottomBar ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 200),
               child: SafeArea(
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  height: kToolbarHeight,
-                  color: Colors.transparent,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      showBottomBar = !showBottomBar;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    height: kToolbarHeight,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black54,
+                          Colors.transparent,
+                        ],
                       ),
-                      if (widget.date != null)
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         IconButton(
-                          icon: Icon(Icons.more_vert, color: Colors.white),
+                          icon: Icon(Icons.arrow_back, color: Colors.white),
                           onPressed: () {
-                            // Handle dot-dot-dot options button press
-                            showDetails();
+                            if (!showBottomBar) {
+                              return;
+                            }
+                            Navigator.of(context).pop();
                           },
                         ),
-                    ],
+                        if (widget.date != null)
+                          IconButton(
+                            icon: Icon(Icons.more_vert, color: Colors.white),
+                            onPressed: () {
+                              if (!showBottomBar) {
+                                return;
+                              }
+                              // Handle dot-dot-dot options button press
+                              showDetails();
+                            },
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ],
-        )
-        // : SafeArea(
-        //     child: Center(
-        //       child: PodVideoPlayer(
-        //         controller: controller,
-        //         podProgressBarConfig: const PodProgressBarConfig(
-        //           padding: kIsWeb
-        //               ? EdgeInsets.zero
-        //               : EdgeInsets.only(
-        //                   bottom: 20,
-        //                   left: 20,
-        //                   right: 20,
-        //                 ),
-        //           playingBarColor: Colors.blue,
-        //           circleHandlerColor: Colors.blue,
-        //           backgroundColor: Colors.blueGrey,
-        //         ),
-        //       ),
-        //     ),
-        //   ),
-        );
+        ));
   }
 
   void showDetails() {
@@ -851,19 +803,94 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                       children: [
                         // Faces will show up here
                         const SizedBox(height: 20),
-                        if (snapshot.data['faces'].isNotEmpty)
-                          const Padding(
+                        if (widget.ofuser == null)
+                          Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20),
-                            child: Text("Faces",
-                                style: TextStyle(
-                                    fontSize: 24, fontWeight: FontWeight.bold)),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("Faces",
+                                    style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold)),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.add_circle_outline),
+                                      onPressed: () {
+                                        // Handle plus icon press
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => AllPeople(
+                                              ip: Globals.ip,
+                                              removeFaceIds:
+                                                  snapshot.data['faces'],
+                                              title: 'Add Someone...',
+                                              isAdd: true,
+                                            ),
+                                          ),
+                                        ).then((value) => {
+                                              if (value != null)
+                                                {
+                                                  addFace(value[0].toString()),
+                                                  Navigator.pop(context),
+                                                  setState(() {
+                                                    snapshot.data['faces']
+                                                        .add(value);
+                                                    // close the bottom sheet
+                                                  }),
+                                                }
+                                            });
+                                      },
+                                    ),
+                                    if (snapshot.data['faces'].isNotEmpty)
+                                      IconButton(
+                                        icon: Icon(Icons.remove_circle_outline),
+                                        onPressed: () {
+                                          // Handle minus icon press
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => AllPeople(
+                                                ip: Globals.ip,
+                                                removeFaceIds:
+                                                    snapshot.data['faces'],
+                                                title: 'Remove Someone...',
+                                                isAdd: false,
+                                              ),
+                                            ),
+                                          ).then((value) => {
+                                                if (value != null)
+                                                  {
+                                                    removeFace(
+                                                        value[0].toString()),
+                                                    Navigator.pop(context),
+                                                    setState(() {
+                                                      snapshot.data['faces']
+                                                          .remove(value);
+                                                    })
+                                                  }
+                                              });
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
+                        if (snapshot.data['faces'].isEmpty)
+                          if (widget.ofuser == null)
+                            SizedBox(
+                              height: 10,
+                            ),
                         if (snapshot.data['faces'].isNotEmpty)
-                          FaceList(
-                            faceNames: snapshot.data['faces'],
-                            ip: widget.ip,
-                            isSquared: true,
-                          ),
+                          if (widget.ofuser == null)
+                            FaceList(
+                              faceNames: snapshot.data['faces'],
+                              ip: Globals.ip,
+                              isSquared: true,
+                            ),
 
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20),
@@ -871,24 +898,33 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                               style: TextStyle(
                                   fontSize: 24, fontWeight: FontWeight.bold)),
                         ),
-                        DetailComponent(
-                          iconData: Icons.event_outlined,
-                          title: DateFormat('d MMM yyyy').format(
-                              DateFormat('dd-MM-yyyy')
-                                  .parse(snapshot.data['date'].toString())),
-                          subtitle:
-                              "${DateFormat('E').format(DateFormat('dd-MM-yyyy').parse(snapshot.data['date'].toString().replaceAll('/', '-')))}, ${snapshot.data['time']}",
-                        ),
-                        DetailComponent(
-                            iconData: Icons.image_outlined,
-                            title: snapshot.data['name'],
+                        if (snapshot.data['date'] != null &&
+                            snapshot.data['time'] != null)
+                          DetailComponent(
+                            iconData: Icons.event_outlined,
+                            title: DateFormat('d MMM yyyy').format(
+                                DateFormat('dd-MM-yyyy')
+                                    .parse(snapshot.data['date'].toString())),
                             subtitle:
-                                "${snapshot.data['mp']} • ${snapshot.data['width']} x ${snapshot.data['height']}"),
-                        DetailComponent(
-                            iconData: Icons.cloud_done_outlined,
-                            title: 'Backed Up (${snapshot.data['size']})',
-                            subtitle:
-                                "${snapshot.data['format'].toString().toUpperCase()} • ${(snapshot.data['compress'] == "false") ? "Original" : "Compressed"}"),
+                                "${DateFormat('E').format(DateFormat('dd-MM-yyyy').parse(snapshot.data['date'].toString()))}, ${snapshot.data['time']}",
+                          ),
+                        if (snapshot.data['name'] != null &&
+                            snapshot.data['mp'] != null &&
+                            snapshot.data['width'] != null &&
+                            snapshot.data['height'] != null)
+                          DetailComponent(
+                              iconData: Icons.image_outlined,
+                              title: snapshot.data['name'],
+                              subtitle:
+                                  "${snapshot.data['mp']} • ${snapshot.data['width']} x ${snapshot.data['height']}"),
+                        if (snapshot.data['size'] != null &&
+                            snapshot.data['format'] != null &&
+                            snapshot.data['compress'] != null)
+                          DetailComponent(
+                              iconData: Icons.cloud_done_outlined,
+                              title: 'Backed Up (${snapshot.data['size']})',
+                              subtitle:
+                                  "${snapshot.data['format'].toString().toUpperCase()} • ${(snapshot.data['compress'] == "false") ? "Original" : "Compressed"}"),
                         if (snapshot.data['location'] != null)
                           DetailComponent(
                               iconData: Icons.location_on_outlined,
@@ -903,18 +939,21 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                               children: [
                                 const Icon(
                                   Icons.sell_outlined,
-                                  size: 40,
+                                  size: 30,
                                 ),
                                 const SizedBox(width: 20),
                                 Expanded(
-                                  child: Wrap(
-                                    spacing: 5.0,
-                                    runSpacing: 5.0,
-                                    alignment: WrapAlignment.start,
-                                    children: List<Widget>.from(
-                                      snapshot.data['tags'].map(
-                                        (tag) => Chip(
-                                          label: Text(tag.toString()),
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Wrap(
+                                      spacing: 5.0,
+                                      runSpacing: 5.0,
+                                      alignment: WrapAlignment.start,
+                                      children: List<Widget>.from(
+                                        snapshot.data['tags'].map(
+                                          (tag) => Chip(
+                                            label: Text(tag.toString()),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -963,17 +1002,19 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   }
 
   Future<Map<String, dynamic>> fetchDetails(int photoId) async {
-    final response = await http.get(
-        Uri.parse('http://${widget.ip}:7251/api/details/meet244/$photoId'));
+    if (imageDetails != null) {
+      return imageDetails;
+    }
+    String url =
+        '${Globals.ip}:7251/api/details/${Globals.username}/${widget.allImages[currentIndex]}';
+    if (widget.ofuser != null) {
+      url = url.replaceFirst(Globals.username, widget.ofuser!);
+    }
+    final response = await http.get(Uri.parse(url));
+
     if (response.statusCode == 200) {
-      // var d = json.decode(response.body);
-      // print(d['faces'].keys);
-      // Map<String, String> facesMap = d['faces'].keys.fold({}, (map, i) {
-      //   map[i] = d['faces'][i].toString();
-      //   return map;
-      // });
-      // print(facesMap);
-      return json.decode(response.body);
+      imageDetails = json.decode(response.body);
+      return imageDetails;
     } else {
       throw Exception('Failed to fetch details');
     }
@@ -981,8 +1022,9 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> likeImage(int photoId) async {
     final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/like/meet244/$photoId'),
-      body: {'username': 'meet244'},
+      Uri.parse(
+          '${Globals.ip}:7251/api/like/${Globals.username}/$photoId'),
+      body: {'username': '${Globals.username}'},
     );
     if (response.statusCode == 200) {
       print('Image Liked/Unliked');
@@ -996,7 +1038,8 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> isImageLiked(int photoId) async {
     final response = await http.get(
-      Uri.parse('http://${widget.ip}:7251/api/liked/meet244/$photoId'),
+      Uri.parse(
+          '${Globals.ip}:7251/api/liked/${Globals.username}/$photoId'),
     );
     if (response.statusCode == 200) {
       var data = json.decode(response.body);
@@ -1010,8 +1053,8 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> deleteImage(List<String> imageIds) async {
     var imgs = imageIds.join(',');
-    final response = await http
-        .delete(Uri.parse('http://${widget.ip}:7251/api/delete/meet244/$imgs'));
+    final response = await http.delete(Uri.parse(
+        '${Globals.ip}:7251/api/delete/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
       print('Image deleted');
     } else {
@@ -1021,8 +1064,8 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> restoreImage(List<String> imageIds) async {
     var imgs = imageIds.join(',');
-    final response = await http
-        .post(Uri.parse('http://${widget.ip}:7251/api/restore/meet244/$imgs'));
+    final response = await http.post(Uri.parse(
+        '${Globals.ip}:7251/api/restore/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
       print('Image restored');
     } else {
@@ -1030,21 +1073,33 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     }
   }
 
-  Future<List<int>> fetchPreviewImage() async {
+  Future<List<int>> fetchPreviewImage({bool nodate = false}) async {
     String url;
-    if (widget.date != null) {
+    if (widget.date != null && !nodate) {
       url =
-          'http://${widget.ip}:7251/api/preview/meet244/${widget.imageId}/${widget.date}';
+          '${Globals.ip}:7251/api/preview/${Globals.username}/${widget.allImages[currentIndex]}/${widget.date}';
     } else {
-      url = 'http://${widget.ip}:7251/api/preview/meet244/${widget.imageId}';
+      url =
+          '${Globals.ip}:7251/api/preview/${Globals.username}/${widget.allImages[currentIndex]}';
+    }
+    if (widget.ofuser != null) {
+      url = url.replaceFirst(Globals.username, widget.ofuser!);
     }
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       if (response.headers['content-type'] != 'image/webp') {
-        initVideo();
+        if (nodate) {
+          initVideo(nodate: true);
+        } else {
+          initVideo();
+        }
       } else {
-        initPhoto();
+        if (nodate) {
+          initPhoto(nodate: true);
+        } else {
+          initPhoto();
+        }
       }
       return response.bodyBytes;
     } else {
@@ -1054,13 +1109,17 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     }
   }
 
-  Future<List<int>> fetchMainImage() async {
+  Future<List<int>> fetchMainImage({bool nodate = false}) async {
     String url;
-    if (widget.date != null) {
+    if (widget.date != null && !nodate) {
       url =
-          'http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}/${widget.date}';
+          '${Globals.ip}:7251/api/asset/${Globals.username}/${widget.allImages[currentIndex]}/${widget.date}';
     } else {
-      url = 'http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}';
+      url =
+          '${Globals.ip}:7251/api/asset/${Globals.username}/${widget.allImages[currentIndex]}';
+    }
+    if (widget.ofuser != null) {
+      url = url.replaceFirst(Globals.username, widget.ofuser!);
     }
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
@@ -1090,7 +1149,7 @@ class DetailComponent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
       child: Row(
         children: [
-          Icon(iconData, size: 40),
+          Icon(iconData, size: 30),
           SizedBox(width: 20),
           Expanded(
             child: Column(
@@ -1101,7 +1160,6 @@ class DetailComponent extends StatelessWidget {
                   style: TextStyle(
                     overflow: TextOverflow.ellipsis,
                     fontSize: 20,
-                    color: Colors.black,
                   ),
                   textAlign:
                       subtitle.isEmpty ? TextAlign.center : TextAlign.start,
@@ -1112,7 +1170,6 @@ class DetailComponent extends StatelessWidget {
                     subtitle,
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.black.withOpacity(0.5),
                     ),
                     textAlign: TextAlign.start,
                     overflow: TextOverflow.ellipsis,

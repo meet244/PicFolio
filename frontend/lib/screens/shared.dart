@@ -1,23 +1,20 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
+import 'package:photoz/globals.dart';
 import 'package:photoz/screens/selectScreen.dart';
 import 'package:photoz/screens/settings.dart';
 import 'package:photoz/widgets/gridImages.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../functions/selectedImages.dart';
 
 class Shared extends StatefulWidget {
-  String ip;
   // final Function(List<int>) onSelect;
 
-  Shared(this.ip);
+  Shared({Key? key}) : super(key: key);
 
   @override
   _SharedState createState() => _SharedState();
@@ -41,13 +38,14 @@ class _SharedState extends State<Shared> {
 
   Future<void> fetchData() async {
     final response = await http.post(
-        Uri.parse('http://${widget.ip}:7251/api/list/shared/users'),
-        body: {'username': 'meet244'});
+        Uri.parse('${Globals.ip}:7251/api/list/shared/users'),
+        body: {'username': '${Globals.username}'});
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       // print(data);
       setState(() {
         names.addAll(List<String>.from(data));
+        selectedIndex = names.indexOf(Globals.username);
         isLoading = false;
         fetchImages();
       });
@@ -59,13 +57,13 @@ class _SharedState extends State<Shared> {
   Future<void> fetchImages() async {
     var url = '';
     if (selectedIndex == 0) {
-      url = 'http://${widget.ip}:7251/api/list/shared/all';
+      url = '${Globals.ip}:7251/api/list/shared/all';
     } else {
-      url = 'http://${widget.ip}:7251/api/list/shared';
+      url = '${Globals.ip}:7251/api/list/shared';
     }
     final response = await http.post(
       Uri.parse(url),
-      body: {'username': 'meet244', 'of_user': names[selectedIndex]},
+      body: {'username': '${Globals.username}', 'of_user': names[selectedIndex]},
     );
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
@@ -112,7 +110,7 @@ class _SharedState extends State<Shared> {
             IconButton(
               onPressed: () {
                 // Open settings page
-                var ret = getimage(widget.ip, context);
+                var ret = getimage(Globals.ip, context);
                 ret.then((value) {
                   if (value) {
                     print('Image Uploaded');
@@ -128,7 +126,7 @@ class _SharedState extends State<Shared> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => SettingsPage(widget.ip),
+                    builder: (context) => SettingsPage(Globals.ip),
                   ),
                 );
               },
@@ -137,7 +135,7 @@ class _SharedState extends State<Shared> {
           if (allselected.isNotEmpty)
             IconButton(
               onPressed: () {
-                var ret = onDelete(widget.ip, context, allselected);
+                var ret = onDelete(Globals.ip, context, allselected);
                 ret.then((value) {
                   if (value) {
                     setState(() {
@@ -151,7 +149,7 @@ class _SharedState extends State<Shared> {
           if (allselected.isNotEmpty)
             IconButton(
               onPressed: () {
-                var ret = onSend(widget.ip, allselected);
+                var ret = onSend(Globals.ip, context, allselected);
                 ret.then((value) {
                   if (value) {
                     setState(() {
@@ -179,13 +177,13 @@ class _SharedState extends State<Shared> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => SelectAlbumsScreen(widget.ip),
+                          builder: (context) => SelectAlbumsScreen(Globals.ip),
                         ),
                       ).then((selectedAlbum) {
                         // Use the selectedAlbum value here
                         if (selectedAlbum != null) {
                           // Handle the selected album
-                          onAddToAlbum(widget.ip, selectedAlbum, allselected)
+                          onAddToAlbum(Globals.ip, selectedAlbum, allselected)
                               .then((value) {
                             if (value) {
                               setState(() {
@@ -207,7 +205,7 @@ class _SharedState extends State<Shared> {
                     ),
                     onTap: () {
                       // Handle copy option tap
-                      editDate(widget.ip, context, allselected);
+                      editDate(Globals.ip, context, allselected);
                     },
                   ),
                   PopupMenuItem(
@@ -220,7 +218,7 @@ class _SharedState extends State<Shared> {
                     ),
                     onTap: () {
                       // Handle move option tap
-                      unMoveToShared(widget.ip, allselected);
+                      unMoveToShared(Globals.ip, allselected);
                     },
                   ),
                 ];
@@ -312,7 +310,7 @@ class _SharedState extends State<Shared> {
                     ),
                   ),
                   ImageGridView(
-                    ip: widget.ip,
+                    ip: Globals.ip,
                     images: allimgs,
                     gridCount: 3,
                     noImageIcon: Icons.person_outline,

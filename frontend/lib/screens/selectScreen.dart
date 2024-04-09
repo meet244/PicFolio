@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:photoz/globals.dart';
 
 // ignore: must_be_immutable
 class SelectAlbumsScreen extends StatefulWidget {
@@ -24,8 +25,8 @@ class _AlbumsScreenState extends State<SelectAlbumsScreen> {
 
   Future<void> fetchAlbums() async {
     final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/list/albums'),
-      body: {'username': 'meet244'},
+      Uri.parse('${Globals.ip}:7251/api/list/albums'),
+      body: {'username': '${Globals.username}'},
     );
     if (response.statusCode == 200) {
       setState(() {
@@ -84,7 +85,7 @@ class _AlbumsScreenState extends State<SelectAlbumsScreen> {
                                 fit: BoxFit.cover,
                                 imageUrl: albums[index][2].toString().isEmpty
                                     ? 'https://cdn3d.iconscout.com/3d/premium/thumb/picture-3446957-2888175.png'
-                                    : 'http://${widget.ip}:7251/api/preview/meet244/${albums[index][2].toString()}',
+                                    : '${Globals.ip}:7251/api/preview/${Globals.username}/${albums[index][2].toString()}',
                               ),
                             ),
                             Container(

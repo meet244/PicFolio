@@ -1,43 +1,50 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:photoz/globals.dart';
 import 'package:photoz/screens/user.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 class FaceList extends StatelessWidget {
   final List<dynamic> faceNames;
   final String ip;
   final bool isSquared;
+  final bool enabled;
 
   const FaceList({
     super.key,
     required this.faceNames,
     required this.ip,
     this.isSquared = false,
-  });
+    this.enabled = false,
+  }); 
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 150,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: faceNames.length,
-        itemBuilder: (context, index) {
-          final faceId = faceNames[index][0].toString();
-          final faceName = faceNames[index][1].toString();
-          return Padding(
-            padding: EdgeInsets.only(
-              left: index == 0 ? 8.0 : 0.0,
-              right: index == faceNames.length - 1 ? 8.0 : 0.0,
-            ),
-            child: FaceItem(
-              ip: ip,
-              faceId: faceId,
-              faceName: faceName,
-              isSquared: isSquared,
-            ),
-          );
-        },
+      child: Skeletonizer(
+        enabled: enabled,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: faceNames.length,
+          itemBuilder: (context, index) {
+            final faceId = faceNames[index][0].toString();
+            final faceName = faceNames[index][1].toString();
+            return Padding(
+              padding: EdgeInsets.only(
+                left: index == 0 ? 8.0 : 0.0,
+                right: index == faceNames.length - 1 ? 8.0 : 0.0,
+              ),
+              child: FaceItem(
+                ip: ip,
+                faceId: faceId,
+                faceName: faceName,
+                isSquared: isSquared,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -76,7 +83,7 @@ class FaceItem extends StatelessWidget {
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(10.0),
                     child: CachedNetworkImage(
-                      imageUrl: 'http://$ip:7251/api/face/image/meet244/$faceId',
+                      imageUrl: '$ip:7251/api/face/image/${Globals.username}/$faceId',
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
@@ -85,7 +92,7 @@ class FaceItem extends StatelessWidget {
                 : ClipRRect(
                     borderRadius: BorderRadius.circular(45.0),
                     child: CachedNetworkImage(
-                      imageUrl: 'http://$ip:7251/api/face/image/meet244/$faceId',
+                      imageUrl: '$ip:7251/api/face/image/${Globals.username}/$faceId',
                       width: 90,
                       height: 90,
                       fit: BoxFit.cover,

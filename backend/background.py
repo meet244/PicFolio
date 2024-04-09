@@ -166,6 +166,9 @@ while True:
                 for person in faces:
                     cursor.execute("INSERT INTO asset_faces (asset_id, face_id) VALUES (?, ?)", (vid_id, person))
 
+                # add blur to database
+                cursor.execute("UPDATE assets SET blurry = ? WHERE id = ?", (blurry, vid_id))
+
                 connection.commit()
 
                 # Get year month date from video created exif data
@@ -254,8 +257,10 @@ while True:
                 for r in tags:
                     # search tag in tags table and if presen get index else add to table and get index
                     cursor.execute("Select id from tags where tag = ?",(r,))
-                    tag_id = cursor.fetchone()[0]
-
+                    tag_id = []
+                    try:
+                        tag_id = cursor.fetchone()[0]
+                    except:pass
                     # add to assets_tags table
                     try:
                         cursor.execute("Insert into asset_tags values(?,?)",(image_id,tag_id))

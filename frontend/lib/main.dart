@@ -1,22 +1,17 @@
-// import 'package:flutter/material.dart';
-// import 'package:photoz/temp_ip.dart';
-// import 'shravani.dart';
+import 'package:flutter/material.dart';
+import 'package:photoz/color.dart';
+import 'package:photoz/screens/splash.dart';
 
-// void main() {
-//   // runApp(MaterialApp(
-//   //   debugShowCheckedModeBanner: false,
-//   //   // title: 'Photoz',
-//   //   home: HomeLeft('127.0.0.1'),
-//   // ));
-//   // runApp(MyHomePage("192.168.0.106"));
+void main() {
+  // runApp(MyHomePage('127.0.0.1'));
+  // runApp(MyHomePage('192.168.0.107'));
 
-//   // runApp(MaterialApp(home: MyHomePage('192.168.0.107'), debugShowCheckedModeBanner: false));
-//   // runApp(AllPeople('127.0.0.1'));
-//   // runApp(Album('127.0.0.1', "1", "Europe Trip"));
-
-//   runApp(MyApp());
-
-// }
-
-// --------------------------------------------------------------------------------------------------------
-
+  // runApp(MyApp());
+  // runApp(LoginPage());
+  runApp(MaterialApp(
+    theme: ThemeData(useMaterial3: true, colorScheme: lightColorScheme),
+    darkTheme: ThemeData(useMaterial3: true, colorScheme: darkColorScheme),
+    debugShowCheckedModeBanner: false,
+    home: SplashScreen(),
+    ));
+}

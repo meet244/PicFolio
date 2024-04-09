@@ -1,5 +1,5 @@
 
-import pillow_avif 
+# import pillow_avif 
 from PIL import Image, ExifTags
 import os
 from moviepy.editor import VideoFileClip

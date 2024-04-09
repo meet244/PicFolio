@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:http/http.dart' as http;
+import 'package:photoz/globals.dart';
 
 class CreateAlbum extends StatefulWidget {
   final String ip;
@@ -54,9 +55,9 @@ class _CreateAlbumPageState extends State<CreateAlbum> {
 
   void createAlbumApi(String title) async {
     final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/album/create'),
+      Uri.parse('${Globals.ip}:7251/api/album/create'),
       body: {
-        'username':'meet244',
+        'username':'${Globals.username}',
         'name': _titleController.text,
       },
     );

@@ -3,18 +3,18 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:photoz/functions/selectedImages.dart';
+import 'package:photoz/globals.dart';
 import 'package:photoz/screens/selectScreen.dart';
-import 'package:photoz/screens/settings.dart';
 import 'dart:convert';
 import 'package:photoz/widgets/gridImages.dart';
 
+
 // ignore: must_be_immutable
 class FavouritesScreen extends StatefulWidget {
-  final String ip;
   String query;
   String qtype;
 
-  FavouritesScreen(this.ip,
+  FavouritesScreen(
       {super.key, this.query = '', this.qtype = 'search'});
 
   @override
@@ -29,14 +29,15 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
   @override
   void initState() {
     super.initState();
+
     fetchImages();
   }
 
   Future<void> fetchImages() async {
     final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/search'),
+      Uri.parse('${Globals.ip}:7251/api/search'),
       body: {
-        'username': 'meet244',
+        'username': Globals.username,
         'query': widget.query,
         'type': widget.qtype,
       },
@@ -85,7 +86,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
             if (allimgs.isNotEmpty)
               IconButton(
                 onPressed: () {
-                  var ret = onDelete(widget.ip, context, allimgs);
+                  var ret = onDelete(Globals.ip, context, allimgs);
                   ret.then((value) {
                     if (value) {
                       setState(() {
@@ -99,7 +100,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
             if (allimgs.isNotEmpty)
               IconButton(
                 onPressed: () {
-                  var ret = onSend(widget.ip, allimgs);
+                  var ret = onSend(Globals.ip, context, allimgs);
                   ret.then((value) {
                     if (value) {
                       setState(() {
@@ -125,23 +126,24 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                       onTap: () {
                         // Handle edit option tap
                         Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SelectAlbumsScreen(widget.ip),
-                        ),
-                      ).then((selectedAlbum) {
-                        // Use the selectedAlbum value here
-                        if (selectedAlbum != null) {
-                          // Handle the selected album
-                          onAddToAlbum(widget.ip, selectedAlbum, allimgs).then((value) {
-                            if (value) {
-                              setState(() {
-                                allimgs.clear();
-                              });
-                            }
-                          });
-                        }
-                      });
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SelectAlbumsScreen(Globals.ip),
+                          ),
+                        ).then((selectedAlbum) {
+                          // Use the selectedAlbum value here
+                          if (selectedAlbum != null) {
+                            // Handle the selected album
+                            onAddToAlbum(Globals.ip, selectedAlbum, allimgs)
+                                .then((value) {
+                              if (value) {
+                                setState(() {
+                                  allimgs.clear();
+                                });
+                              }
+                            });
+                          }
+                        });
                       },
                     ),
                     PopupMenuItem(
@@ -154,7 +156,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                       ),
                       onTap: () {
                         // Handle copy option tap
-                        editDate(widget.ip, context, allimgs);
+                        editDate(Globals.ip, context, allimgs);
                       },
                     ),
                     PopupMenuItem(
@@ -167,7 +169,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                       ),
                       onTap: () {
                         // Handle move option tap
-                        moveToShared(widget.ip, allimgs);
+                        moveToShared(Globals.ip, allimgs);
                       },
                     ),
                   ];
@@ -189,7 +191,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
             : SingleChildScrollView(
                 child: widget.query.toLowerCase() == 'favourite'
                     ? ImageGridView(
-                        ip: widget.ip,
+                        ip: Globals.ip,
                         images: images,
                         gridCount: 3,
                         noImageIcon: Icons.heart_broken_outlined,
@@ -204,7 +206,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                       )
                     : widget.query.toLowerCase() == 'screenshot'
                         ? ImageGridView(
-                            ip: widget.ip,
+                            ip: Globals.ip,
                             images: images,
                             gridCount: 3,
                             noImageIcon: Icons.screenshot_outlined,
@@ -219,7 +221,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                           )
                         : widget.query.toLowerCase() == 'blurry'
                             ? ImageGridView(
-                                ip: widget.ip,
+                                ip: Globals.ip,
                                 images: images,
                                 gridCount: 3,
                                 noImageIcon: Icons.photo_library,
@@ -233,7 +235,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                                 },
                               )
                             : ImageGridView(
-                                ip: widget.ip,
+                                ip: Globals.ip,
                                 images: images,
                                 gridCount: 3,
                                 noImageIcon: Icons.search_off_outlined,
@@ -252,7 +254,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
   Future<List<int>> fetchPreviewImage(int imageId, String date) async {
     date = date.replaceAll('-', '/');
     final response = await http.get(Uri.parse(
-        'http://${widget.ip}:7251/api/preview/meet244/$imageId/$date'));
+        '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId/$date'));
     if (response.statusCode == 200) {
       return response.bodyBytes;
     } else {

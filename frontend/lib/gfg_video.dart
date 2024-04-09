@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:photoz/globals.dart';
 import 'package:video_player/video_player.dart';
 
 void main() => runApp(VideoPlayerApp());
@@ -31,7 +32,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     _controller = VideoPlayerController.networkUrl(
-      Uri.parse('https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
+      // Uri.parse('https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
+      // Uri.parse('http://192.168.0.107:7251/api/asset/${Globals.username}/318/2024/02/15'),
+      Uri.parse('https://c975-203-188-230-171.ngrok-free.app/api/asset/${Globals.username}/318/2024/02/15'),
     );
     _initializeVideoPlayerFuture = _controller.initialize();
 

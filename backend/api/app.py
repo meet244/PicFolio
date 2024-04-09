@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_file, render_template
+from flask import Flask, jsonify, request, send_file, render_template, redirect
 import json
 import sqlite3
 import threading
@@ -162,6 +162,10 @@ def get_assetface(asset):
     #return the photo
     return jsonify([
         {"faceid":1, "x":10,"y":10,"w":100,"h":100},{"faceid":2, "x":200,"y":200,"w":100,"h":100},{"faceid":3, "x":300,"y":300,"w":100,"h":100}])   
+
+@app.route('/scan/<string:anything>', methods=['GET'])
+def scan(anything):
+    return redirect("https://github.com/meet244/PicFolio", code=302)
 
 if __name__ == '__main__':
     # read_config()

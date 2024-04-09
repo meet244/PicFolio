@@ -34,8 +34,12 @@ cursor.execute('''CREATE TABLE assets
             blurry INTEGER DEFAULT NULL, 
             deleted DATE DEFAULT 0 NOT NULL, 
             compress INTEGER DEFAULT NULL,
+            duration TEXT DEFAULT NULL,
             liked INTEGER DEFAULT NULL,
-            shared INTEGER DEFAULT NULL)''')
+            shared INTEGER DEFAULT NULL,
+            city TEXT DEFAULT NULL,
+            state TEXT DEFAULT NULL,
+            country TEXT DEFAULT NULL)''')
 
 # create tags table
 cursor.execute('''CREATE TABLE tags
@@ -113,6 +117,6 @@ with open("ram_tag_list.txt", "r") as file:
 # cursor.execute("INSERT INTO faces (name) VALUES ('varun')")
 
 
-conn.commit()
+
 # Close the connection
 conn.close()

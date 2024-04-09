@@ -1,14 +1,4 @@
 # Functionalities
-- video support on app
-- dates in albums
-- AI search queries #backend
-- Make preview imagew/vid smaller #backend
-- add & remove faces from images and appbar of user view
-- download image/video on web + app
-- user handling
-- multi image sharing
-- settings Page
 
-
-# Future Scope
-- stats page
+- store in original quality #backend
+- Make preview image/vid smaller #backend

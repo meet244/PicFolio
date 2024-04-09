@@ -4,150 +4,72 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
-import 'dart:io';
-import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:photoz/functions/selectedImages.dart';
+import 'package:photoz/globals.dart';
 import 'package:photoz/screens/selectScreen.dart';
 import 'package:photoz/screens/settings.dart';
 
 import 'package:photoz/widgets/gridImages.dart';
-import 'package:share_plus/share_plus.dart';
 
 class HomeLeft extends StatefulWidget {
-  final String ip;
   // final Function(List<int>) onSelect;
 
-  HomeLeft(
-    this.ip,
-    // this.onSelect,
-  );
+  HomeLeft({Key? key}) : super(key: key);
 
   @override
   _HomeLeftState createState() => _HomeLeftState();
 }
 
 class _HomeLeftState extends State<HomeLeft> {
-  List<dynamic> images = [];
-  // Map<int, List<int>> loadedImages = {};
-  List<int> allImages = [];
-  List<int> allselected = [];
+  List<dynamic> images = []; // insges after fetching
+  List<int> allselected = []; // selected images
 
-  Future<List<int>> fetchMainImage(int imageId) async {
-    var url = 'http://${widget.ip}:7251/api/asset/meet244/$imageId';
-
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      return response.bodyBytes;
-    } else {
-      throw Exception('Failed to load preview image ${response.statusCode}');
-    }
-  }
-
-  Future<void> _onDelete() async {
-    // Implement your delete logic here
-    print(allselected);
-
-    // Call delete image API here
-    var imgs = allselected.join(',');
-    final response = await http
-        .delete(Uri.parse('http://${widget.ip}:7251/api/delete/meet244/$imgs'));
-    if (response.statusCode == 200) {
-      print('Image deleted');
-      // remove the deleted images from the grid
-      setState(() {
-        allselected.clear();
-      });
-    } else {
-      throw Exception('Failed to delete image');
-    }
-  }
-
-  void _onAdd() {
-    // Implement your add logic here
-    print(allselected);
-    setState(() {
-      allselected.clear(); // Clear selected images after sending
-    });
-  }
-
-  Future<void> _editDate() async {
-    // Implement your edit date logic here
-    // get a date from calendar
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      // initialDate: selectedDate,
-      firstDate: DateTime(2015, 8),
-      lastDate: DateTime(2101),
-    );
-    if (picked == null) {
-      return;
-    }
-    var date = (picked.toString().split(" ")[0]);
-    var imgs = allselected.join(',');
-    final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/redate'),
-      body: {
-        'username': 'meet244',
-        'date': date,
-        'id': imgs,
-      },
-    );
-    if (response.statusCode == 200) {
-      print('Dates Updated');
-      setState(() {
-        allselected.clear();
-      });
-      // remove the deleted images from the grid
-    } else {
-      throw Exception('Failed to update date');
-    }
-
-    setState(() {
-      allselected.clear(); // Clear selected images after sending
-    });
-  }
-
-  Future<void> _moveToFamily() async {
-    // Implement your move to family logic here
-    print(allselected);
-    final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/shared/move'),
-      body: {
-        'username': 'meet244',
-        'asset_id': allselected.join(','),
-      },
-    );
-    if (response.statusCode == 200) {
-      print('Image Shared');
-    } else {
-      throw Exception('Failed to move to share');
-    }
-    setState(() {
-      allselected.clear(); // Clear selected images after sending
-    });
-  }
+  bool isLoading = false;
+  int page = -1;
+  bool bottomreached = false;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    fetchImages();
     // SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,overlays: [SystemUiOverlay.top]);
+
+    fetchImages();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        fetchImages();
+      }
+    });
   }
 
   Future<void> fetchImages() async {
-    final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/list/general'),
-      body: {'username': 'meet244'},
-    );
-    if (response.statusCode == 200) {
-      var data = jsonDecode(response.body);
-
+    if (!isLoading && !bottomreached) {
       setState(() {
-        images = data;
+        page++;
+        isLoading = true;
       });
-    } else {
-      throw Exception('Failed to load images');
+      final response = await http.post(
+        Uri.parse('${Globals.ip}:7251/api/list/general'),
+        body: {'username': Globals.username, "page": page.toString()},
+      );
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+
+        if (data.isEmpty) {
+          bottomreached = true;
+          print('Bottom Reached');
+        }
+
+        setState(() {
+          images.addAll(data);
+          isLoading = false;
+        });
+
+        print(images);
+      } else {
+        throw Exception('Failed to load images');
+      }
     }
   }
 
@@ -184,7 +106,7 @@ class _HomeLeftState extends State<HomeLeft> {
             IconButton(
               onPressed: () {
                 // Open settings page
-                var ret = getimage(widget.ip, context);
+                var ret = getimage(Globals.ip, context);
                 ret.then((value) {
                   if (value) {
                     print('Image Uploaded');
@@ -200,7 +122,7 @@ class _HomeLeftState extends State<HomeLeft> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => SettingsPage(widget.ip),
+                    builder: (context) => SettingsPage(Globals.ip),
                   ),
                 );
               },
@@ -209,7 +131,7 @@ class _HomeLeftState extends State<HomeLeft> {
           if (allselected.length > 0)
             IconButton(
               onPressed: () {
-                var ret = onDelete(widget.ip, context, allselected);
+                var ret = onDelete(Globals.ip, context, allselected);
                 ret.then((value) {
                   if (value) {
                     setState(() {
@@ -223,7 +145,7 @@ class _HomeLeftState extends State<HomeLeft> {
           if (allselected.length > 0)
             IconButton(
               onPressed: () {
-                var ret = onSend(widget.ip, allselected);
+                var ret = onSend(Globals.ip, context, allselected);
                 ret.then((value) {
                   if (value) {
                     setState(() {
@@ -250,13 +172,14 @@ class _HomeLeftState extends State<HomeLeft> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => SelectAlbumsScreen(widget.ip),
+                          builder: (context) => SelectAlbumsScreen(Globals.ip),
                         ),
                       ).then((selectedAlbum) {
                         // Use the selectedAlbum value here
                         if (selectedAlbum != null) {
                           // Handle the selected album
-                          onAddToAlbum(widget.ip, selectedAlbum, allselected).then((value) {
+                          onAddToAlbum(Globals.ip, selectedAlbum, allselected)
+                              .then((value) {
                             if (value) {
                               setState(() {
                                 allselected.clear();
@@ -277,7 +200,7 @@ class _HomeLeftState extends State<HomeLeft> {
                     ),
                     onTap: () {
                       // Handle copy option tap
-                      editDate(widget.ip, context, allselected);
+                      editDate(Globals.ip, context, allselected);
                     },
                   ),
                   PopupMenuItem(
@@ -290,7 +213,7 @@ class _HomeLeftState extends State<HomeLeft> {
                     ),
                     onTap: () {
                       // Handle move option tap
-                      moveToShared(widget.ip, allselected);
+                      moveToShared(Globals.ip, allselected);
                     },
                   ),
                 ];
@@ -305,13 +228,14 @@ class _HomeLeftState extends State<HomeLeft> {
             ),
         ],
       ),
-      body: (images.isEmpty)
-          ? const Center(
+      body: (Globals.username == '' || isLoading)
+          ? Center(
               child: CircularProgressIndicator(),
             )
           : SingleChildScrollView(
+              controller: _scrollController,
               child: ImageGridView(
-                ip: widget.ip,
+                ip: Globals.ip,
                 images: images,
                 gridCount: 3,
                 noImageIcon: Icons.image_outlined,
@@ -322,8 +246,8 @@ class _HomeLeftState extends State<HomeLeft> {
                   setState(() {
                     allselected = selectedImages;
                   });
-                  // widget.onSelect(selectedImages);
                 },
+                bottomload: !bottomreached,
               ),
             ),
     );

@@ -6,8 +6,8 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:photoz/screens/search.dart';
-import 'package:photoz/screens/settings.dart';
+import 'package:photoz/color.dart';
+import 'package:photoz/globals.dart';
 import 'package:photoz/widgets/gridImages.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
@@ -64,7 +64,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<List<int>> fetchMainImage(int imageId) async {
-    var url = 'http://${widget.ip}:7251/api/asset/meet244/$imageId';
+    var url = '${Globals.ip}:7251/api/asset/${Globals.username}/$imageId';
 
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
@@ -81,7 +81,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     // Call delete image API here
     var imgs = selectedImages.join(',');
     final response = await http
-        .delete(Uri.parse('http://${widget.ip}:7251/api/delete/meet244/$imgs'));
+        .delete(Uri.parse('${Globals.ip}:7251/api/delete/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
       print('Image deleted');
       // remove the deleted images from the grid
@@ -116,9 +116,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     var date = (picked.toString().split(" ")[0]);
     var imgs = selectedImages.join(',');
     final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/redate'),
+      Uri.parse('${Globals.ip}:7251/api/redate'),
       body: {
-        'username': 'meet244',
+        'username': '${Globals.username}',
         'date': date,
         'id': imgs,
       },
@@ -142,9 +142,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     // Implement your move to family logic here
     print(selectedImages);
     final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/shared/move'),
+      Uri.parse('${Globals.ip}:7251/api/shared/move'),
       body: {
-        'username': 'meet244',
+        'username': '${Globals.username}',
         'asset_id': selectedImages.join(','),
       },
     );
@@ -167,7 +167,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> fetchImages() async {
     final response = await http.get(Uri.parse(
-        'http://${widget.ip}:7251/api/list/face/meet244/${widget.userId}'));
+        '${Globals.ip}:7251/api/list/face/${Globals.username}/${widget.userId}'));
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
 
@@ -183,7 +183,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     // wait for 0.1 seconds
     // await Future.delayed(const Duration(milliseconds: 100));
     final response = await http.get(Uri.parse(
-        'http://${widget.ip}:7251/api/face/name/meet244/${widget.userId}'));
+        '${Globals.ip}:7251/api/face/name/${Globals.username}/${widget.userId}'));
     if (response.statusCode == 200) {
       var d = json.decode(response.body);
       var n = d[0];
@@ -205,7 +205,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> rename(String name) async {
     final response = await http.get(Uri.parse(
-        'http://${widget.ip}:7251/api/face/rename/meet244/${widget.userId}/${name}'));
+        '${Globals.ip}:7251/api/face/rename/${Globals.username}/${widget.userId}/${name}'));
     if (response.statusCode == 200) {
       setState(() {
         this.name = name;
@@ -217,8 +217,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> removeName() async {
     final response = await http.post(
-        Uri.parse('http://${widget.ip}:7251/api/face/noname'),
-        body: {'username': 'meet244', 'name': widget.userId});
+        Uri.parse('${Globals.ip}:7251/api/face/noname'),
+        body: {'username': '${Globals.username}', 'name': widget.userId});
     if (response.statusCode == 200) {
       setState(() {
         // remove name from var
@@ -229,9 +229,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
+  Future<void> removeFace(List<int> images) async {
+    // Implement your share logic here
+    final response = await http
+        .post(Uri.parse('${Globals.ip}:7251/api/face/remove'), body: {
+      'username': '${Globals.username}',
+      'asset_id': images.join(','),
+      'face_id': widget.userId,
+    });
+    if (response.statusCode == 200) {
+      print('Face removed');
+    } else {
+      throw Exception('Failed to remove face');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData(useMaterial3: true, colorScheme: lightColorScheme),
+      darkTheme: ThemeData(useMaterial3: true, colorScheme: darkColorScheme),
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
@@ -343,6 +360,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         _moveToFamily();
                       },
                     ),
+                    PopupMenuItem(
+                      child: Row(
+                        children: const [
+                          Icon(Icons.person_remove_outlined),
+                          SizedBox(width: 8.0),
+                          Text('Remove photos'),
+                        ],
+                      ),
+                      onTap: () {
+                        // Handle move option tap
+                        removeFace(selectedImages);
+                      },
+                    ),
                   ];
                 },
                 child: Padding(
@@ -424,7 +454,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: ClipOval(
                       child: CachedNetworkImage(
-                        imageUrl: 'http://${widget.ip}:7251/api/face/image/meet244/${widget.userId}',
+                        imageUrl: '${Globals.ip}:7251/api/face/image/${Globals.username}/${widget.userId}',
                         width: 100.0,
                         height: 100.0,
                         fit: BoxFit.cover,
@@ -510,7 +540,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
               const SizedBox(height: 20.0),
               ImageGridView(
-                ip: widget.ip,
+                ip: Globals.ip,
                 images: images,
                 gridCount: 3,
                 noImageIcon: Icons.image_outlined,

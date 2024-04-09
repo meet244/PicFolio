@@ -5,7 +5,9 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:photoz/functions/selectedImages.dart';
+import 'package:photoz/globals.dart';
 import 'package:photoz/screens/album.dart';
 import 'package:photoz/screens/bin.dart';
 import 'package:photoz/screens/duplicate.dart';
@@ -13,10 +15,10 @@ import 'package:photoz/screens/favourite.dart';
 import 'package:photoz/screens/newalbum.dart';
 import 'package:photoz/screens/settings.dart';
 
-class Library extends StatefulWidget {
-  final String ip;
 
-  const Library(this.ip, {Key? key}) : super(key: key);
+class Library extends StatefulWidget {
+
+  const Library({Key? key}) : super(key: key);
 
   @override
   _LibraryState createState() => _LibraryState();
@@ -33,10 +35,11 @@ class _LibraryState extends State<Library> {
 
   Future<void> fetchAlbums() async {
     final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/list/albums'),
-      body: {'username': 'meet244'},
+      Uri.parse('${Globals.ip}:7251/api/list/albums'),
+      body: {'username': Globals.username},
     );
     if (response.statusCode == 200) {
+      // print(jsonDecode(response.body));
       setState(() {
         albums = jsonDecode(response.body);
       });
@@ -54,7 +57,7 @@ class _LibraryState extends State<Library> {
           IconButton(
             onPressed: () {
               // Select image from gallery
-              var ret = getimage(widget.ip, context);
+              var ret = getimage(Globals.ip, context);
               ret.then((value) {
                 if (value) {
                   print('Image Uploaded');
@@ -69,7 +72,7 @@ class _LibraryState extends State<Library> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SettingsPage(widget.ip),
+                  builder: (context) => SettingsPage(Globals.ip),
                 ),
               );
             },
@@ -93,7 +96,6 @@ class _LibraryState extends State<Library> {
                               context,
                               MaterialPageRoute(
                                   builder: (context) => FavouritesScreen(
-                                        widget.ip,
                                         query: "favourite",
                                         qtype: "buttons",
                                       )),
@@ -107,7 +109,6 @@ class _LibraryState extends State<Library> {
                               context,
                               MaterialPageRoute(
                                   builder: (context) => FavouritesScreen(
-                                        widget.ip,
                                         query: "blurry",
                                         qtype: "buttons",
                                       )),
@@ -126,7 +127,7 @@ class _LibraryState extends State<Library> {
                               context,
                               MaterialPageRoute(
                                   builder: (context) =>
-                                      Duplicates(ip: widget.ip)),
+                                      Duplicates(ip: Globals.ip)),
                             )
                           }),
                   TransparentIconButton(
@@ -136,7 +137,7 @@ class _LibraryState extends State<Library> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => BinScreen(widget.ip)),
+                                  builder: (context) => BinScreen(Globals.ip)),
                             )
                           }),
                 ],
@@ -156,13 +157,13 @@ class _LibraryState extends State<Library> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 childAspectRatio:
-                    0.80, // Adjust the value to increase or decrease vertical space
+                    0.85, // Adjust the value to increase or decrease vertical space
                 children: [
                   GestureDetector(
                     onTap: () async {
                       bool result = await Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => CreateAlbum(ip: widget.ip),
+                          builder: (context) => CreateAlbum(ip: Globals.ip),
                         ),
                       );
                       if (result == true) {
@@ -243,8 +244,10 @@ class _LibraryState extends State<Library> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => Album(widget.ip,
-                                          albums![i][0], albums![i][1]),
+                                      builder: (context) => Album(
+                                          albums![i][0],
+                                          albums![i][1],
+                                          albums![i][3]),
                                     ),
                                   ).then((response) {
                                     if (response == true) {
@@ -260,7 +263,7 @@ class _LibraryState extends State<Library> {
                                       fit: BoxFit.cover,
                                       imageUrl: albums![i][2].toString().isEmpty
                                           ? 'https://cdn3d.iconscout.com/3d/premium/thumb/picture-3446957-2888175.png'
-                                          : 'http://${widget.ip}:7251/api/preview/meet244/${albums![i][2].toString()}',
+                                          : '${Globals.ip}:7251/api/preview/${Globals.username}/${albums![i][2].toString()}',
                                     )),
                               );
                             },
@@ -295,8 +298,11 @@ class _LibraryState extends State<Library> {
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 5),
                                 child: Text(
-                                  albums![i][3]
-                                      .toString(), // Replace `date` with the actual date value
+                                  albums![i][3].toString().isEmpty
+                                      ? ''
+                                      : DateFormat('dd MMM yyyy').format(
+                                          DateFormat('yyyy-MM-dd')
+                                              .parse(albums![i][3].toString())),
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Theme.of(context)

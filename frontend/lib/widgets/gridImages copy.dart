@@ -1,6 +1,7 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import 'dart:async';
@@ -10,8 +11,11 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:photoz/globals.dart';
+import 'package:photoz/screens/all_people.dart';
 import 'package:photoz/widgets/face.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:appinio_video_player/appinio_video_player.dart';
 import 'dart:io';
 
 // ignore: must_be_immutable
@@ -55,11 +59,11 @@ class _ImageGridViewState extends State<ImageGridView> {
     // print(date);
     // print(imageId);
     date = date.replaceAll('-', '/');
-    String url = 'http://${widget.ip}:7251/api/preview/meet244/$imageId/$date';
+    String url = '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId/$date';
     if (widget.isBin || date == '') {
-      url = 'http://${widget.ip}:7251/api/preview/meet244/$imageId';
+      url = '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId';
     } else {
-      url = 'http://${widget.ip}:7251/api/preview/meet244/$imageId/$date';
+      url = '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId/$date';
     }
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
@@ -81,128 +85,10 @@ class _ImageGridViewState extends State<ImageGridView> {
     });
   }
 
-  Future<void> _onSend() async {
-    // Implement your send logic here
-    print(_selectedImages);
-
-    try {
-      final tempDir = await getTemporaryDirectory();
-
-      // Create temporary files for each image
-      final tempFiles = <File>[];
-      for (int i = 0; i < _selectedImages.length; i++) {
-        final imageId = _selectedImages[i];
-        final mainImageBytes = await fetchPreviewImage(imageId);
-        loadedImages[imageId] = mainImageBytes;
-        // Save the main image to a temporary file
-        final tempFile = File('${tempDir.path}/temp_image_$i.png');
-        await tempFile.writeAsBytes(mainImageBytes);
-        tempFiles.add(tempFile);
-      }
-
-      // Share the multiple images using the share_plus package
-      await Share.shareFiles(
-        tempFiles.map((file) => file.path).toList(),
-        text: 'I shared these images from my PicFolio app. Try them out!',
-        subject: 'Image Sharing',
-      );
-    } catch (e) {
-      print('Error sharing images: $e');
-      // Handle the error, e.g., show a snackbar or log the error
-    }
-
-    setState(() {
-      _selectedImages.clear(); // Clear selected images after sending
-    });
-  }
-
-  Future<void> _onDelete() async {
-    // Implement your delete logic here
-    print(_selectedImages);
-
-    // Call delete image API here
-    var imgs = _selectedImages.join(',');
-    final response = await http
-        .delete(Uri.parse('http://${widget.ip}:7251/api/delete/meet244/$imgs'));
-    if (response.statusCode == 200) {
-      print('Image deleted');
-      // remove the deleted images from the grid
-      setState(() {
-        _selectedImages.clear();
-      });
-    } else {
-      throw Exception('Failed to delete image');
-    }
-  }
-
-  void _onAdd() {
-    // Implement your add logic here
-    print(_selectedImages);
-    setState(() {
-      _selectedImages.clear(); // Clear selected images after sending
-    });
-  }
-
-  Future<void> _editDate() async {
-    // Implement your edit date logic here
-    // get a date from calendar
-    final DateTime? picked = await showDatePicker(
-        context: context,
-        // initialDate: selectedDate,
-        firstDate: DateTime(2015, 8),
-        lastDate: DateTime(2101));
-    if (picked == null) {
-      return;
-    }
-    var date = (picked.toString().split(" ")[0]);
-    var imgs = _selectedImages.join(',');
-    final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/redate'),
-      body: {
-        'username': 'meet244',
-        'date': date,
-        'id': imgs,
-      },
-    );
-    if (response.statusCode == 200) {
-      print('Dates Updated');
-      setState(() {
-        _selectedImages.clear();
-      });
-      // remove the deleted images from the grid
-    } else {
-      throw Exception('Failed to update date');
-    }
-
-    setState(() {
-      _selectedImages.clear(); // Clear selected images after sending
-    });
-  }
-
-  Future<void> _moveToFamily() async {
-    // Implement your move to family logic here
-    print(_selectedImages);
-    final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/shared/move'),
-      body: {
-        'username': 'meet244',
-        'asset_id': _selectedImages.join(','),
-      },
-    );
-    if (response.statusCode == 200) {
-      print('Image Shared');
-    } else {
-      throw Exception('Failed to move to share');
-    }
-    setState(() {
-      _selectedImages.clear(); // Clear selected images after sending
-    });
-  }
-
   Future<void> restoreImage() async {
     var imgs = _selectedImages.join(',');
     final response = await http
-        .post(Uri.parse('http://${widget.ip}:7251/api/restore/meet244/$imgs'));
+        .post(Uri.parse('${Globals.ip}:7251/api/restore/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
       print('Image restored');
       setState(() {
@@ -215,8 +101,8 @@ class _ImageGridViewState extends State<ImageGridView> {
 
   Future<void> removeAlbumImages() async {
     final response = await http
-        .post(Uri.parse('http://${widget.ip}:7251/api/album/remove'), body: {
-      'username': 'meet244',
+        .post(Uri.parse('${Globals.ip}:7251/api/album/remove'), body: {
+      'username': '${Globals.username}',
       'album_id': widget.albumOrFaceId.toString(),
       'asset_id': _selectedImages.join(','),
     });
@@ -277,12 +163,17 @@ class _ImageGridViewState extends State<ImageGridView> {
                                 for (var item in entry[1]) {
                                   _selectedImages.remove(item[0] as int);
                                 }
+                                widget.onSelectionChanged(_selectedImages);
                               });
                             } else {
                               setState(() {
                                 for (var item in entry[1]) {
-                                  _selectedImages.add(item[0] as int);
+                                  if (!_selectedImages
+                                      .contains(item[0] as int)) {
+                                    _selectedImages.add(item[0] as int);
+                                  }
                                 }
+                                widget.onSelectionChanged(_selectedImages);
                               });
                             }
                           },
@@ -291,7 +182,7 @@ class _ImageGridViewState extends State<ImageGridView> {
                                 ? Icons.check_circle
                                 : Icons.check_circle_outline,
                             size: 30,
-                            color: allChecked ? Colors.blue : Colors.grey,
+                            color: Colors.grey,
                           ),
                         ),
                       ],
@@ -318,14 +209,14 @@ class _ImageGridViewState extends State<ImageGridView> {
                               widget.isBin
                                   ? MaterialPageRoute(
                                       builder: (context) => ImageDetailScreen(
-                                        widget.ip,
+                                        Globals.ip,
                                         imageId,
                                         date: null,
                                       ),
                                     )
                                   : MaterialPageRoute(
                                       builder: (context) => ImageDetailScreen(
-                                        widget.ip,
+                                        Globals.ip,
                                         imageId,
                                         date: entry[0].replaceAll('-', '/'),
                                       ),
@@ -337,21 +228,27 @@ class _ImageGridViewState extends State<ImageGridView> {
                       },
                       child: Stack(
                         children: [
-                          CachedNetworkImage(
-                            imageUrl:
-                                'http://${widget.ip}:7251/api/preview/meet244/$imageId',
-                            placeholder: (context, url) => Center(
-                                child: const CircularProgressIndicator()),
-                            errorWidget: (context, url, error) => Center(
+                          Hero(
+                            tag: imageId.toString(),
+                            child: CachedNetworkImage(
+                              imageUrl:
+                                  '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId',
+                              placeholder: (context, url) => Center(
+                                child: const CircularProgressIndicator(),
+                              ),
+                              errorWidget: (context, url, error) => Center(
                                 child: const Icon(
-                              Icons.error,
-                              color: Colors.red,
-                            )),
-                            imageBuilder: (context, imageProvider) => Container(
-                              decoration: BoxDecoration(
-                                image: DecorationImage(
-                                  image: imageProvider,
-                                  fit: BoxFit.cover,
+                                  Icons.error,
+                                  color: Colors.red,
+                                ),
+                              ),
+                              imageBuilder: (context, imageProvider) =>
+                                  Container(
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: imageProvider,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
                               ),
                             ),
@@ -367,6 +264,43 @@ class _ImageGridViewState extends State<ImageGridView> {
                                 ),
                               ),
                             ),
+                          if (item.length > 2 && item[2] != null)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.bottomLeft,
+                                    end: Alignment.center,
+                                    colors: [
+                                      Colors.black.withOpacity(1),
+                                      Colors.transparent
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (item.length > 2 && item[2] != null)
+                            Positioned(
+                              bottom: 7,
+                              left: 7,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.play_circle_fill,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    item[2].toString(),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     );
@@ -376,108 +310,6 @@ class _ImageGridViewState extends State<ImageGridView> {
             );
           },
         ),
-        // if (_selectedImages.isNotEmpty)
-        //   Positioned(
-        //     bottom: 0,
-        //     left: 0,
-        //     right: 0,
-        //     child: Container(
-        //       decoration: BoxDecoration(
-        //         color: Colors.grey[200],
-        //         borderRadius: const BorderRadius.only(
-        //           topLeft: Radius.circular(10),
-        //           topRight: Radius.circular(10),
-        //         ),
-        //       ),
-        //       padding: const EdgeInsets.all(8.0),
-        //       child: Row(
-        //         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        //         children: [
-        //           if (widget.isBin)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _onDelete,
-        //                   icon: const Icon(Icons.delete_outline),
-        //                 ),
-        //                 Text('Delete Premanently'),
-        //               ],
-        //             ),
-        //           if (widget.isBin)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: restoreImage,
-        //                   icon: const Icon(
-        //                       Icons.settings_backup_restore_outlined),
-        //                 ),
-        //                 Text('Restore'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _onSend,
-        //                   icon: const Icon(Icons.share_outlined),
-        //                 ),
-        //                 Text('Share'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _onDelete,
-        //                   icon: const Icon(Icons.delete_outline),
-        //                 ),
-        //                 Text('Delete'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _onAdd,
-        //                   icon: const Icon(Icons.add_outlined),
-        //                 ),
-        //                 Text('Add to'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _editDate,
-        //                   icon: const Icon(Icons.edit_calendar_outlined),
-        //                 ),
-        //                 Text('Edit Date'),
-        //               ],
-        //             ),
-        //           if (widget.isNormal)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: _moveToFamily,
-        //                   icon: const Icon(Icons.groups_2_outlined),
-        //                 ),
-        //                 Text('Move to Family'),
-        //               ],
-        //             ),
-        //           if (widget.isAlbum)
-        //             Column(
-        //               children: [
-        //                 IconButton(
-        //                   onPressed: removeAlbumImages,
-        //                   icon: const Icon(Icons.close_outlined),
-        //                 ),
-        //                 Text('Remove from Album'),
-        //               ],
-        //             ),
-        //         ],
-        //       ),
-        //     ),
-        //   ),
       ],
     );
   }
@@ -540,89 +372,208 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   bool isMainImageLoaded = false;
   Uint8List? mainImageBytes;
   bool isliked = false;
+  bool isImage = true;
+
+  var imageDetails;
+
+  late VideoPlayerController videoPlayerController;
+  late CustomVideoPlayerController _customVideoPlayerController;
+
+  late VideoPlayerController _controller;
 
   @override
   void initState() {
     super.initState();
     _previewImageFuture = fetchPreviewImage();
+    isImageLiked(widget.imageId);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack,
+        overlays: [SystemUiOverlay.top]);
+    videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(
+        "http://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4"))
+      ..initialize().then((value) => setState(() {}));
+    _customVideoPlayerController = CustomVideoPlayerController(
+      context: context,
+      videoPlayerController: videoPlayerController,
+    );
+    _controller = VideoPlayerController.networkUrl(
+      Uri.parse(
+          'http://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
+    );
+
+    _controller.setLooping(false);
+    // _controller.play();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    if (!isImage) {
+      _controller.dispose();
+      _customVideoPlayerController.dispose();
+    }
+    super.dispose();
+    // SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+    //     overlays: [SystemUiOverlay.top]);
+  }
+
+  void initPhoto() {
     _mainImageFuture = fetchMainImage();
     _mainImageFuture.then((_) {
       setState(() {
         isMainImageLoaded = true;
       });
     });
-    isImageLiked(widget.imageId);
-    // SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack,
-    //     overlays: [SystemUiOverlay.top]);
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-    // SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
-    //     overlays: [SystemUiOverlay.top]);
+  Future<void> initVideo() async {
+    videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(
+        "${Globals.ip}:7251/api/asset/${Globals.username}/${widget.imageId}/${widget.date}"))
+      ..initialize().then((value) => setState(() {}));
+    _customVideoPlayerController = CustomVideoPlayerController(
+      context: context,
+      videoPlayerController: videoPlayerController,
+    );
+    // print("asseting");
+
+    // _controller = VideoPlayerController.networkUrl(
+    //   // Uri.parse('http://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
+    //   Uri.parse('${Globals.ip}:7251/api/asset/${Globals.username}/${widget.imageId}/${widget.date}'),
+    // );
+    // _initializeVideoPlayerFuture = _controller.initialize();
+
+    // _controller.setLooping(false);
+    // _controller.play();
+    setState(() {
+      isImage = false;
+    });
+  }
+
+  Future<void> addFace(String faceId) async {
+    final response = await http
+        .post(Uri.parse('${Globals.ip}:7251/api/face/add'), body: {
+      'username': '${Globals.username}',
+      'asset_id': widget.imageId.toString(),
+      'face_id': faceId,
+    });
+    if (response.statusCode == 200) {
+      print('Face added');
+    } else {
+      throw Exception('Failed to add face');
+    }
+  }
+
+  Future<void> removeFace(String faceId) async {
+    final response = await http
+        .post(Uri.parse('${Globals.ip}:7251/api/face/remove'), body: {
+      'username': '${Globals.username}',
+      'asset_id': widget.imageId.toString(),
+      'face_id': faceId,
+    });
+    if (response.statusCode == 200) {
+      print('Face removed');
+    } else {
+      throw Exception('Failed to remove face');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                showBottomBar = !showBottomBar;
-              });
-            },
-            child: Stack(
-              children: [
-                FutureBuilder(
-                  future: isMainImageLoaded
-                      ? _mainImageFuture
-                      : _previewImageFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    } else if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    } else if (snapshot.hasData) {
-                      return PhotoView(
-                        imageProvider:
-                            MemoryImage(Uint8List.fromList(snapshot.data!)),
-                        minScale: PhotoViewComputedScale.contained,
-                        maxScale: PhotoViewComputedScale.covered * 5.0,
-                      );
-                    } else {
-                      return SizedBox(); // Return an empty widget if there's no data
-                    }
-                  },
-                ),
-                Visibility(
-                  visible: !isMainImageLoaded,
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-              ],
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  showBottomBar = !showBottomBar;
+                });
+              },
+              child: Hero(
+                tag: widget.imageId.toString(),
+                child: (isImage)
+                    ? FutureBuilder(
+                        future: isMainImageLoaded
+                            ? _mainImageFuture
+                            : _previewImageFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          } else if (snapshot.hasError) {
+                            return Center(
+                                child: Text('Error: ${snapshot.error}'));
+                          } else if (snapshot.hasData) {
+                            return (isImage)
+                                ? PhotoView(
+                                    imageProvider: MemoryImage(
+                                        Uint8List.fromList(snapshot.data!)),
+                                    minScale: PhotoViewComputedScale.contained,
+                                    maxScale:
+                                        PhotoViewComputedScale.covered * 5.0,
+                                  )
+                                : Center(
+                                    child: Text('Image not supported'),
+                                  );
+                          } else {
+                            return SizedBox(); // Return an empty widget if there's no data
+                          }
+                        },
+                      )
+                    : SafeArea(
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 65),
+                            child: AspectRatio(
+                              aspectRatio:
+                                  videoPlayerController.value.aspectRatio,
+                              child: CustomVideoPlayer(
+                                customVideoPlayerController:
+                                    _customVideoPlayerController,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                // : FutureBuilder(
+                //     future: _initializeVideoPlayerFuture,
+                //     builder: (context, snapshot) {
+                //       if (snapshot.connectionState == ConnectionState.done) {
+                //         return GestureDetector(
+                //           onTap: () {
+                //             setState(() {
+                //               if (_controller.value.isPlaying) {
+                //                 _controller.pause();
+                //               } else {
+                //                 _controller.play();
+                //               }
+                //             });
+                //           },
+                //           child: Padding(
+                //             padding: const EdgeInsets.symmetric(vertical: 60),
+                //             child: Center(
+                //               child: AspectRatio(
+                //                 aspectRatio: _controller.value.aspectRatio,
+                //                 child: VideoPlayer(_controller),
+                //               ),
+                //             ),
+                //           ),
+                //         );
+                //       } else {
+                //         return Center(child: CircularProgressIndicator());
+                //       }
+                //     },
+                //   ),
+              ),
             ),
-          ),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                showBottomBar = !showBottomBar;
-              });
-            },
-            child: AnimatedOpacity(
+            AnimatedOpacity(
               opacity: showBottomBar ? 1.0 : 0.0,
               duration: Duration(milliseconds: 200),
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Container(
                   padding: EdgeInsets.all(16),
-                  // color: Colors.black.withOpacity(0.5),
                   color: Colors.transparent,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -702,179 +653,238 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                 ),
               ),
             ),
-          ),
-          AnimatedOpacity(
-            opacity: showBottomBar ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 200),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              height: kToolbarHeight,
-              color: Colors.transparent,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  if (widget.date != null)
-                    IconButton(
-                      icon: Icon(Icons.more_vert, color: Colors.white),
-                      onPressed: () {
-                        // Handle dot-dot-dot options button press
-                        showModalBottomSheet(
-                          enableDrag: true,
-                          isScrollControlled: true,
-                          context: context,
-                          builder: (BuildContext context) {
-                            // Use a FutureBuilder to show loading indicator and handle API response
-                            return FutureBuilder(
-                              future: fetchDetails(widget.imageId),
-                              builder: (BuildContext context,
-                                  AsyncSnapshot<dynamic> snapshot) {
-                                if (snapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return Container(
-                                    height: 200,
-                                    alignment: Alignment.center,
-                                    child: CircularProgressIndicator(),
-                                  );
-                                } else {
-                                  if (snapshot.hasError) {
-                                    return Text('Error: ${snapshot.error}');
-                                  } else {
-                                    // API call successful, show details in bottom sheet
-                                    return DraggableScrollableSheet(
-                                      expand: false,
-                                      minChildSize: 0.3,
-                                      maxChildSize: 1,
-                                      initialChildSize: 0.5,
-                                      builder: (BuildContext context,
-                                          ScrollController scrollController) {
-                                        return ListView(
-                                          controller: scrollController,
-                                          // mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            // Faces will show up here
-                                            const SizedBox(height: 20),
-                                            if (snapshot
-                                                .data['faces'].isNotEmpty)
-                                              const Padding(
-                                                padding: EdgeInsets.symmetric(
-                                                    horizontal: 20),
-                                                child: Text("Faces",
-                                                    style: TextStyle(
-                                                        fontSize: 24,
-                                                        fontWeight:
-                                                            FontWeight.bold)),
-                                              ),
-                                            if (snapshot
-                                                .data['faces'].isNotEmpty)
-                                              FaceList(
-                                                faceNames:
-                                                    snapshot.data['faces'],
-                                                ip: widget.ip,
-                                                isSquared: true,
-                                              ),
-
-                                            const Padding(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 20),
-                                              child: Text("Details",
-                                                  style: TextStyle(
-                                                      fontSize: 24,
-                                                      fontWeight:
-                                                          FontWeight.bold)),
-                                            ),
-                                            DetailComponent(
-                                              iconData: Icons.event_outlined,
-                                              title: DateFormat('d MMM yyyy')
-                                                  .format(
-                                                      DateFormat('dd-MM-yyyy')
-                                                          .parse(snapshot
-                                                              .data['date']
-                                                              .toString())),
-                                              subtitle:
-                                                  "${DateFormat('E').format(DateFormat('dd-MM-yyyy').parse(snapshot.data['date'].toString().replaceAll('/', '-')))}, ${snapshot.data['time']}",
-                                            ),
-                                            DetailComponent(
-                                                iconData: Icons.image_outlined,
-                                                title: snapshot.data['name'],
-                                                subtitle:
-                                                    "${snapshot.data['mp']} • ${snapshot.data['width']} x ${snapshot.data['height']}"),
-                                            DetailComponent(
-                                                iconData:
-                                                    Icons.cloud_done_outlined,
-                                                title:
-                                                    'Backed Up (${snapshot.data['size']})',
-                                                subtitle:
-                                                    "${snapshot.data['format'].toString().toUpperCase()} • ${(snapshot.data['compress'] == "false") ? "Original" : "Compressed"}"),
-                                            if (snapshot.data['location'] !=
-                                                null)
-                                              DetailComponent(
-                                                  iconData: Icons
-                                                      .location_on_outlined,
-                                                  title: 'Location',
-                                                  subtitle: snapshot
-                                                          .data['location']
-                                                          ?.toString() ??
-                                                      'Unknown'),
-                                            if (snapshot
-                                                .data['tags'].isNotEmpty)
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 8.0,
-                                                        horizontal: 20.0),
-                                                child: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.sell_outlined,
-                                                      size: 40,
-                                                    ),
-                                                    const SizedBox(width: 20),
-                                                    Expanded(
-                                                      child: Wrap(
-                                                        spacing: 5.0,
-                                                        runSpacing: 5.0,
-                                                        alignment:
-                                                            WrapAlignment.start,
-                                                        children:
-                                                            List<Widget>.from(
-                                                          snapshot.data['tags']
-                                                              .map(
-                                                            (tag) => Chip(
-                                                              label: Text(tag
-                                                                  .toString()),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            const SizedBox(height: 20),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  }
-                                }
-                              },
-                            );
+            AnimatedOpacity(
+              opacity: showBottomBar ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: SafeArea(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  height: kToolbarHeight,
+                  color: Colors.transparent,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      if (widget.date != null)
+                        IconButton(
+                          icon: Icon(Icons.more_vert, color: Colors.white),
+                          onPressed: () {
+                            // Handle dot-dot-dot options button press
+                            showDetails();
                           },
-                        );
-                      },
-                    ),
-                ],
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ));
+  }
+
+  void showDetails() {
+    showModalBottomSheet(
+      enableDrag: true,
+      isScrollControlled: true,
+      context: context,
+      builder: (BuildContext context) {
+        // Use a FutureBuilder to show loading indicator and handle API response
+        return FutureBuilder(
+          future: fetchDetails(widget.imageId),
+          builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Container(
+                height: 200,
+                alignment: Alignment.center,
+                child: CircularProgressIndicator(),
+              );
+            } else {
+              if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              } else {
+                // API call successful, show details in bottom sheet
+                return DraggableScrollableSheet(
+                  expand: false,
+                  minChildSize: 0.3,
+                  maxChildSize: 1,
+                  initialChildSize: 0.5,
+                  builder: (BuildContext context,
+                      ScrollController scrollController) {
+                    return ListView(
+                      controller: scrollController,
+                      // mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Faces will show up here
+
+                        const SizedBox(height: 20),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("Faces",
+                                  style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold)),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.add_circle_outline),
+                                    onPressed: () {
+                                      // Handle plus icon press
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => AllPeople(
+                                            ip: Globals.ip,
+                                            removeFaceIds:
+                                                snapshot.data['faces'],
+                                            title: 'Add Someone...',
+                                            isAdd: true,
+                                          ),
+                                        ),
+                                      ).then((value) => {
+                                            if (value != null)
+                                              {
+                                                addFace(value[0].toString()),
+                                                Navigator.pop(context),
+                                                setState(() {
+                                                  snapshot.data['faces']
+                                                      .add(value);
+                                                  // close the bottom sheet
+                                                }),
+                                              }
+                                          });
+                                    },
+                                  ),
+                                  if (snapshot.data['faces'].isNotEmpty)
+                                    IconButton(
+                                      icon: Icon(Icons.remove_circle_outline),
+                                      onPressed: () {
+                                        // Handle minus icon press
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => AllPeople(
+                                              ip: Globals.ip,
+                                              removeFaceIds:
+                                                  snapshot.data['faces'],
+                                              title: 'Remove Someone...',
+                                              isAdd: false,
+                                            ),
+                                          ),
+                                        ).then((value) => {
+                                              if (value != null)
+                                                {
+                                                  removeFace(
+                                                      value[0].toString()),
+                                                  Navigator.pop(context),
+                                                  setState(() {
+                                                    snapshot.data['faces']
+                                                        .remove(value);
+                                                  })
+                                                }
+                                            });
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (snapshot.data['faces'].isEmpty)
+                          SizedBox(
+                            height: 10,
+                          ),
+                        if (snapshot.data['faces'].isNotEmpty)
+                          FaceList(
+                            faceNames: snapshot.data['faces'],
+                            ip: Globals.ip,
+                            isSquared: true,
+                          ),
+
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: Text("Details",
+                              style: TextStyle(
+                                  fontSize: 24, fontWeight: FontWeight.bold)),
+                        ),
+                        if (snapshot.data['date'] != null &&
+                            snapshot.data['time'] != null)
+                          DetailComponent(
+                            iconData: Icons.event_outlined,
+                            title: DateFormat('d MMM yyyy').format(
+                                DateFormat('dd-MM-yyyy')
+                                    .parse(snapshot.data['date'].toString())),
+                            subtitle:
+                                "${DateFormat('E').format(DateFormat('dd-MM-yyyy').parse(snapshot.data['date'].toString()))}, ${snapshot.data['time']}",
+                          ),
+                        if (snapshot.data['name'] != null &&
+                            snapshot.data['mp'] != null &&
+                            snapshot.data['width'] != null &&
+                            snapshot.data['height'] != null)
+                          DetailComponent(
+                              iconData: Icons.image_outlined,
+                              title: snapshot.data['name'],
+                              subtitle:
+                                  "${snapshot.data['mp']} • ${snapshot.data['width']} x ${snapshot.data['height']}"),
+                        if (snapshot.data['size'] != null &&
+                            snapshot.data['format'] != null &&
+                            snapshot.data['compress'] != null)
+                          DetailComponent(
+                              iconData: Icons.cloud_done_outlined,
+                              title: 'Backed Up (${snapshot.data['size']})',
+                              subtitle:
+                                  "${snapshot.data['format'].toString().toUpperCase()} • ${(snapshot.data['compress'] == "false") ? "Original" : "Compressed"}"),
+                        if (snapshot.data['location'] != null)
+                          DetailComponent(
+                              iconData: Icons.location_on_outlined,
+                              title: 'Location',
+                              subtitle: snapshot.data['location']?.toString() ??
+                                  'Unknown'),
+                        if (snapshot.data['tags'].isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8.0, horizontal: 20.0),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.sell_outlined,
+                                  size: 40,
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: Wrap(
+                                    spacing: 5.0,
+                                    runSpacing: 5.0,
+                                    alignment: WrapAlignment.start,
+                                    children: List<Widget>.from(
+                                      snapshot.data['tags'].map(
+                                        (tag) => Chip(
+                                          label: Text(tag.toString()),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 20),
+                      ],
+                    );
+                  },
+                );
+              }
+            }
+          },
+        );
+      },
     );
   }
 
@@ -905,17 +915,14 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   }
 
   Future<Map<String, dynamic>> fetchDetails(int photoId) async {
+    if (imageDetails != null) {
+      return imageDetails;
+    }
     final response = await http.get(
-        Uri.parse('http://${widget.ip}:7251/api/details/meet244/$photoId'));
+        Uri.parse('${Globals.ip}:7251/api/details/${Globals.username}/$photoId'));
     if (response.statusCode == 200) {
-      // var d = json.decode(response.body);
-      // print(d['faces'].keys);
-      // Map<String, String> facesMap = d['faces'].keys.fold({}, (map, i) {
-      //   map[i] = d['faces'][i].toString();
-      //   return map;
-      // });
-      // print(facesMap);
-      return json.decode(response.body);
+      imageDetails = json.decode(response.body);
+      return imageDetails;
     } else {
       throw Exception('Failed to fetch details');
     }
@@ -923,8 +930,8 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> likeImage(int photoId) async {
     final response = await http.post(
-      Uri.parse('http://${widget.ip}:7251/api/like/meet244/$photoId'),
-      body: {'username': 'meet244'},
+      Uri.parse('${Globals.ip}:7251/api/like/${Globals.username}/$photoId'),
+      body: {'username': '${Globals.username}'},
     );
     if (response.statusCode == 200) {
       print('Image Liked/Unliked');
@@ -938,7 +945,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> isImageLiked(int photoId) async {
     final response = await http.get(
-      Uri.parse('http://${widget.ip}:7251/api/liked/meet244/$photoId'),
+      Uri.parse('${Globals.ip}:7251/api/liked/${Globals.username}/$photoId'),
     );
     if (response.statusCode == 200) {
       var data = json.decode(response.body);
@@ -953,7 +960,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   Future<void> deleteImage(List<String> imageIds) async {
     var imgs = imageIds.join(',');
     final response = await http
-        .delete(Uri.parse('http://${widget.ip}:7251/api/delete/meet244/$imgs'));
+        .delete(Uri.parse('${Globals.ip}:7251/api/delete/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
       print('Image deleted');
     } else {
@@ -964,7 +971,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   Future<void> restoreImage(List<String> imageIds) async {
     var imgs = imageIds.join(',');
     final response = await http
-        .post(Uri.parse('http://${widget.ip}:7251/api/restore/meet244/$imgs'));
+        .post(Uri.parse('${Globals.ip}:7251/api/restore/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
       print('Image restored');
     } else {
@@ -973,18 +980,25 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   }
 
   Future<List<int>> fetchPreviewImage() async {
-    // print(widget.date);
     String url;
     if (widget.date != null) {
-      url = 'http://${widget.ip}:7251/api/preview/meet244/${widget.imageId}/${widget.date}';
+      url =
+          '${Globals.ip}:7251/api/preview/${Globals.username}/${widget.imageId}/${widget.date}';
     } else {
-      url = 'http://${widget.ip}:7251/api/preview/meet244/${widget.imageId}';
+      url = '${Globals.ip}:7251/api/preview/${Globals.username}/${widget.imageId}';
     }
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
+      if (response.headers['content-type'] != 'image/webp') {
+        initVideo();
+      } else {
+        initPhoto();
+      }
       return response.bodyBytes;
     } else {
+      print(response.statusCode);
+      print(response.reasonPhrase);
       throw Exception('Failed to load preview image');
     }
   }
@@ -993,18 +1007,14 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     String url;
     if (widget.date != null) {
       url =
-          'http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}/${widget.date}';
+          '${Globals.ip}:7251/api/asset/${Globals.username}/${widget.imageId}/${widget.date}';
     } else {
-      url = 'http://${widget.ip}:7251/api/asset/meet244/${widget.imageId}';
+      url = '${Globals.ip}:7251/api/asset/${Globals.username}/${widget.imageId}';
     }
-    print(url);
-    print(widget.date != null);
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       mainImageBytes = response.bodyBytes;
       return response.bodyBytes;
-    } else if (response.statusCode == 304) {
-      return mainImageBytes!;
     } else {
       throw Exception('Failed to load main image');
     }
@@ -1029,7 +1039,7 @@ class DetailComponent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
       child: Row(
         children: [
-          Icon(iconData, size: 40),
+          Icon(iconData, size: 30),
           SizedBox(width: 20),
           Expanded(
             child: Column(

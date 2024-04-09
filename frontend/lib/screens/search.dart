@@ -1,11 +1,13 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
+import 'package:photoz/color.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photoz/screens/favourite.dart';
 
 class SearchScreen extends StatefulWidget {
-  final String ip;
   final String searched;
-  SearchScreen(this.ip, this.searched, {Key? key}) : super(key: key);
+  SearchScreen(this.searched, {Key? key}) : super(key: key);
 
   @override
   _SearchScreenState createState() => _SearchScreenState();
@@ -42,10 +44,12 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData(useMaterial3: true, colorScheme: lightColorScheme),
+      darkTheme: ThemeData(useMaterial3: true, colorScheme: darkColorScheme),
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
-          backgroundColor: Color.fromARGB(255, 245, 245, 245),
+            backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
           leading: IconButton(
             icon: Icon(Icons.arrow_back),
             onPressed: () {
@@ -75,7 +79,7 @@ class _SearchScreenState extends State<SearchScreen> {
               // Navigate to the result screen
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(
-                  builder: (context) => FavouritesScreen(widget.ip, query: text, qtype: 'search'),
+                  builder: (context) => FavouritesScreen(query: text, qtype: 'search'),
                 ),
               );
             },
@@ -108,7 +112,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 // Navigate to the result screen
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (context) => FavouritesScreen(widget.ip, query: query, qtype: 'search'),
+                    builder: (context) => FavouritesScreen(query: query, qtype: 'search'),
                   ),
                 );
               },
