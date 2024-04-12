@@ -178,7 +178,7 @@ set_data_label = ctk.CTkLabel(root, text="Set Data directory: the Images will sa
 set_data_label.grid(row=1, column=0, padx=20, pady=30)
 home_label = ctk.CTkLabel(root, text="Home Directory:")
 home_label.place(x=30, y=60)
-update_button = ctk.CTkButton(root, text="update", width=150, height=1,command=on_open_button_click,fg_color=("#FFB4A6","#AF2F1C"),hover_color=("#FFDAD4","#8D1605"),text_color=("black","white"))
+update_button = ctk.CTkButton(root, text="Update", width=150, height=1,command=on_open_button_click,fg_color=("#FFB4A6","#AF2F1C"),hover_color=("#FFDAD4","#8D1605"),text_color=("black","white"))
 update_button.place(x=318,y=90)
 entry_var = tk.StringVar()
 entry = ctk.CTkEntry(root, textvariable=entry_var, width=260)
