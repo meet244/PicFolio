@@ -9,10 +9,18 @@ The app also includes **AI features**, allowing users to **automatically detect 
 ## Screenshots 🖼️
 
 - ### Desktop💻
-![Desktop Screenshot](desktop_screenshot.png)
+<img src="https://github.com/meet244/PicFolio/assets/83262693/c4d21236-8be9-4692-a13e-bd5845969456" width="400">
 
 - ### Mobile📱
-![Mobile Screenshot](mobile_screenshot.png)
+<img src="https://github.com/meet244/PicFolio/assets/83262693/917a3b7b-9bac-48b6-ab21-1394dd580a69" width="200">
+<img src="https://github.com/meet244/PicFolio/assets/83262693/835fe459-a793-47dc-a30a-3e57c775859b" width="200">
+<img src="https://github.com/meet244/PicFolio/assets/83262693/90aee256-4bbb-4031-a287-8627158f1b17" width="200">
+<img src="https://github.com/meet244/PicFolio/assets/83262693/d5779674-acf3-4b64-8ddf-608dae141fed" width="200">
+<img src="https://github.com/meet244/PicFolio/assets/83262693/afe5475b-2d59-4c6b-a2e6-ef87eb184c47" width="200">
+<img src="https://github.com/meet244/PicFolio/assets/83262693/35bcf745-d89d-437f-8591-01e7a975dc85" width="200">
+<img src="https://github.com/meet244/PicFolio/assets/83262693/08045eef-e917-4051-96f7-db67114e8527" width="200">
+<img src="https://github.com/meet244/PicFolio/assets/83262693/2b1e938e-78a0-4e38-8c13-9efc664d8ff4" width="200">
+
 
 ## Features
 
