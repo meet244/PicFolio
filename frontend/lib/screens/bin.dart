@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:photoz/color.dart';
@@ -9,9 +10,10 @@ import 'package:photoz/widgets/gridImages.dart';
 class BinScreen extends StatefulWidget {
   final String ip;
 
-  BinScreen(this.ip);
+  const BinScreen(this.ip, {super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _BinScreenState createState() => _BinScreenState();
 }
 
@@ -27,12 +29,12 @@ class _BinScreenState extends State<BinScreen> {
 
   Future<void> fetchImages() async {
     final response = await http.post(
-      Uri.parse('${Globals.ip}:7251/api/list/deleted'),
+      Uri.parse('${Globals.ip}/api/list/deleted'),
       body: {'username': Globals.username},
     );
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
-      print(data);
+      if (kDebugMode) print(data);
       setState(() {
         images = data;
       });
@@ -44,7 +46,7 @@ class _BinScreenState extends State<BinScreen> {
   void _restore(List<int> allselected) async {
     var imgs = allselected.join(',');
     final response = await http.post(
-      Uri.parse('${Globals.ip}:7251/api/restore'),
+      Uri.parse('${Globals.ip}/api/restore'),
       body: {'username': Globals.username, 'ids': imgs},
     );
     if (response.statusCode == 200) {
@@ -107,10 +109,10 @@ class _BinScreenState extends State<BinScreen> {
                   if (allimags.isNotEmpty)
                     IconButton(
                       onPressed: () {
-                        print(allimags);
-                        print(images);
+                        if (kDebugMode) print(allimags);
+                        if (kDebugMode) print(images);
                         // return;
-                        var ret = onDelete(Globals.ip, context, allimags);
+                        var ret = onDelete(context, allimags);
                         ret.then((value) {
                           if (value) {
                             setState(() {

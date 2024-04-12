@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,8 +9,7 @@ import 'package:photoz/globals.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 
-Future<bool> onSend(
-    String ip, BuildContext context, List<int> allselected) async {
+Future<bool> onSend(BuildContext context, List<int> allselected) async {
   // Implement your send logic here
   try {
     final tempDir = await getTemporaryDirectory();
@@ -24,13 +24,13 @@ Future<bool> onSend(
         builder: (BuildContext context) {
           return Center(
             child: Container(
-              padding: EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(20.0),
               color: Colors.white,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  CircularProgressIndicator(),
-                  SizedBox(height: 20.0),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 20.0),
                   Text('Sharing image ${i + 1} of ${allselected.length}'),
                 ],
               ),
@@ -40,7 +40,7 @@ Future<bool> onSend(
       );
 
       final imageId = allselected[i];
-      final mainImageBytes = await fetchMainImage(ip, imageId);
+      final mainImageBytes = await fetchMainImage(imageId);
       // Save the main image to a temporary file
       final tempFile = File('${tempDir.path}/temp_image_$i.png');
       await tempFile.writeAsBytes(mainImageBytes);
@@ -59,14 +59,14 @@ Future<bool> onSend(
     );
     return true;
   } catch (e) {
-    print('Error sharing images: $e');
+    if (kDebugMode) print('Error sharing images: $e');
     // Handle the error, e.g., show a snackbar or log the error
     return false;
   }
 }
 
-Future<List<int>> fetchMainImage(String ip, int imageId) async {
-  var url = '$ip:7251/api/asset/${Globals.username}/$imageId';
+Future<List<int>> fetchMainImage(int imageId) async {
+  var url = '${Globals.ip}/api/asset/${Globals.username}/$imageId';
   final response = await http.get(Uri.parse(url));
   if (response.statusCode == 200) {
     return response.bodyBytes;
@@ -75,8 +75,7 @@ Future<List<int>> fetchMainImage(String ip, int imageId) async {
   }
 }
 
-Future<bool> onDelete(
-    String ip, BuildContext context, List<int> allselected) async {
+Future<bool> onDelete(BuildContext context, List<int> allselected) async {
   // ask for confirmation before deleting
   final bool delete = await showDialog(
     context: context,
@@ -90,7 +89,7 @@ Future<bool> onDelete(
             onPressed: () {
               Navigator.of(context).pop(true);
             },
-            child: Text('Yes'),
+            child: const Text('Yes'),
           ),
           TextButton(
             onPressed: () {
@@ -107,8 +106,8 @@ Future<bool> onDelete(
   }
   // Call delete image API here
   var imgs = allselected.join(',');
-  final response =
-      await http.delete(Uri.parse('$ip:7251/api/delete/${Globals.username}/$imgs'));
+  final response = await http
+      .delete(Uri.parse('${Globals.ip}/api/delete/${Globals.username}/$imgs'));
   if (response.statusCode == 200) {
     // print('Image deleted');
     // remove the deleted images from the grid
@@ -119,44 +118,45 @@ Future<bool> onDelete(
   }
 }
 
-Future<bool> onAddToAlbum(
-    String ip, String albumId, List<int> allselected) async {
+Future<bool> onAddToAlbum(String albumId, List<int> allselected) async {
   // Call add image API here
   var imgs = allselected.join(',');
   final response = await http.post(
-    Uri.parse('$ip:7251/api/album/add'),
-    body: {'username': '${Globals.username}', 'album_id': albumId, 'asset_id': imgs},
+    Uri.parse('${Globals.ip}/api/album/add'),
+    body: {'username': Globals.username, 'album_id': albumId, 'asset_id': imgs},
   );
 
   if (response.statusCode == 200) {
-    print('Image added to album');
+    if (kDebugMode) print('Image added to album');
     return true;
   } else {
-    print('Failed to add image to album');
+    if (kDebugMode) print('Failed to add image to album');
     return false;
   }
 }
 
-Future<bool> onRemoveFromAlbum(
-    String ip, String albumId, List<int> allselected) async {
+Future<bool> onRemoveFromAlbum(String albumId, List<int> allselected) async {
   // Call remove image API here
   var imgs = allselected.join(',');
   final response = await http.post(
-    Uri.parse('${ip}:7251/api/album/remove'),
-    body: {'username': '${Globals.username}', 'album_id': albumId, 'asset_ids': imgs},
+    Uri.parse('${Globals.ip}/api/album/remove'),
+    body: {
+      'username': Globals.username,
+      'album_id': albumId,
+      'asset_ids': imgs
+    },
   );
 
   if (response.statusCode == 200) {
-    print('Image removed from album');
+    if (kDebugMode) print('Image removed from album');
     return true;
   } else {
-    print('Failed to remove image from album');
+    if (kDebugMode) print('Failed to remove image from album');
     return false;
   }
 }
 
 Future<bool> editDate(
-  String ip,
   BuildContext context,
   List<int> allselected,
 ) async {
@@ -174,57 +174,57 @@ Future<bool> editDate(
   var date = (picked.toString().split(" ")[0]);
   var imgs = allselected.join(',');
   final response = await http.post(
-    Uri.parse('${ip}:7251/api/redate'),
+    Uri.parse('${Globals.ip}/api/redate'),
     body: {
-      'username': '${Globals.username}',
+      'username': Globals.username,
       'date': date,
       'id': imgs,
     },
   );
   if (response.statusCode == 200) {
-    print('Dates Updated');
+    if (kDebugMode) print('Dates Updated');
     return true;
     // remove the deleted images from the grid
   } else {
-    print('Failed to update date');
+    if (kDebugMode) print('Failed to update date');
     return false;
   }
 }
 
-Future<bool> moveToShared(String ip, List<int> allselected) async {
+Future<bool> moveToShared(List<int> allselected) async {
   // Implement your move to family logic here
-  print(allselected);
+  if (kDebugMode) print(allselected);
   final response = await http.post(
-    Uri.parse('${ip}:7251/api/shared/move'),
+    Uri.parse('${Globals.ip}/api/shared/move'),
     body: {
-      'username': '${Globals.username}',
+      'username': Globals.username,
       'asset_id': allselected.join(','),
     },
   );
   if (response.statusCode == 200) {
-    print('Image Shared');
+    if (kDebugMode) print('Image Shared');
     return true;
   } else {
-    print('Failed to move to share');
+    if (kDebugMode) print('Failed to move to share');
   }
   return false;
 }
 
-Future<bool> unMoveToShared(String ip, List<int> allselected) async {
+Future<bool> unMoveToShared(List<int> allselected) async {
   // Implement your move to family logic here
-  print(allselected);
+  if (kDebugMode) print(allselected);
   final response = await http.post(
-    Uri.parse('${ip}:7251/api/shared/moveback'),
+    Uri.parse('${Globals.ip}/api/shared/moveback'),
     body: {
-      'username': '${Globals.username}',
+      'username': Globals.username,
       'asset_id': allselected.join(','),
     },
   );
   if (response.statusCode == 200) {
-    print('Image Unshared');
+    if (kDebugMode) print('Image Unshared');
     return true;
   } else {
-    print('Failed to unmove to share');
+    if (kDebugMode) print('Failed to unmove to share');
   }
   return false;
 }
@@ -238,17 +238,17 @@ Future<bool> getimage(
   final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
   if (pickedFile != null) {
     // print("picked");
-    if (await _uploadimage(ip, context, pickedFile)) {
+    if (await _uploadimage(context, pickedFile)) {
       return true;
     }
   }
   return false;
 }
 
-Future<bool> _uploadimage(String ip, BuildContext context, XFile xFile) async {
-  var url = Uri.parse('${ip}:7251/api/upload');
+Future<bool> _uploadimage(BuildContext context, XFile xFile) async {
+  var url = Uri.parse('${Globals.ip}/api/upload');
   var formData = http.MultipartRequest('POST', url);
-  formData.fields['username'] = '${Globals.username}';
+  formData.fields['username'] = Globals.username;
 
   final imageBytes = await xFile.readAsBytes();
   formData.files.add(

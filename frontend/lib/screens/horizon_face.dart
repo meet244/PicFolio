@@ -1,8 +1,8 @@
-// ignore_for_file: prefer_const_constructors
 
 import 'dart:async';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:photoz/functions/selectedImages.dart';
@@ -11,14 +11,14 @@ import 'package:photoz/screens/all_people.dart';
 import 'package:photoz/screens/favourite.dart';
 import 'package:photoz/screens/search.dart';
 import 'package:photoz/screens/settings.dart';
-import 'package:photoz/widgets/gridImages%20copy.dart';
-import 'package:skeletonizer/skeletonizer.dart';
+import 'package:photoz/widgets/gridImages.dart';
 import '../widgets/face.dart';
 
 class FaceListWidget extends StatefulWidget {
   const FaceListWidget({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _FaceListWidgetState createState() => _FaceListWidgetState();
 }
 
@@ -41,7 +41,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
   Future<void> fetchFaces() async {
     try {
       final response = await http.post(
-        Uri.parse('${Globals.ip}:7251/api/list/faces'),
+        Uri.parse('${Globals.ip}/api/list/faces'),
         body: {'username': Globals.username},
       );
       if (response.statusCode == 200) {
@@ -57,7 +57,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
         throw Exception('Failed to load faces');
       }
     } catch (e) {
-      print('Error: $e');
+      if (kDebugMode) print('Error: $e');
     } finally {
       setState(() {
         isfaceLoading = false;
@@ -70,7 +70,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
   Future<void> fetchAutoAlbums() async {
     try {
       final response = await http.post(
-        Uri.parse('${Globals.ip}:7251/api/list/autoalbums'),
+        Uri.parse('${Globals.ip}/api/list/autoalbums'),
         body: {'username': Globals.username},
       );
       if (response.statusCode == 200) {
@@ -87,7 +87,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
         throw Exception('Failed to load auto albums');
       }
     } catch (e) {
-      print('Error: $e');
+      if (kDebugMode) print('Error: $e');
     }
   }
 
@@ -95,7 +95,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('PicFolio'),
+        title: const Text('PicFolio'),
         actions: <Widget>[
           IconButton(
             onPressed: () {
@@ -103,11 +103,11 @@ class _FaceListWidgetState extends State<FaceListWidget> {
               var ret = getimage(Globals.ip, context);
               ret.then((value) {
                 if (value) {
-                  print('Image Uploaded');
+                  if (kDebugMode) print('Image Uploaded');
                 }
               });
             },
-            icon: Icon(Icons.add_a_photo_outlined, size: 32.0),
+            icon: const Icon(Icons.add_a_photo_outlined, size: 32.0),
           ),
           IconButton(
             onPressed: () {
@@ -119,7 +119,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
                 ),
               );
             },
-            icon: Icon(Icons.settings_outlined, size: 32.0),
+            icon: const Icon(Icons.settings_outlined, size: 32.0),
           ),
         ],
       ),
@@ -187,7 +187,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
                   autoAlbumsPlace.isEmpty &&
                   autoAlbumsDocs.isEmpty &&
                   autoAlbumsThings.isEmpty)
-                NothingMessage(
+                const NothingMessage(
                     icon: Icons.search,
                     mainMessage: "Nothing to see 👀",
                     secondaryMessage:
@@ -198,7 +198,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
         GestureDetector(
               onTap: () {
                 Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => SearchScreen('')));
+                    MaterialPageRoute(builder: (context) => const SearchScreen('')));
               },
               child: Container(
                 margin:
@@ -279,7 +279,7 @@ class _FaceListWidgetState extends State<FaceListWidget> {
                       blendMode: BlendMode.srcATop,
                       child: CachedNetworkImage(
                         imageUrl:
-                            '${Globals.ip}:7251/api/preview/${Globals.username}/${listr[index][1]}/${listr[index][2].replaceAll("-", '/')}', // Replace with your image URL
+                            '${Globals.ip}/api/preview/${Globals.username}/${listr[index][1]}/${listr[index][2].replaceAll("-", '/')}', // Replace with your image URL
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,

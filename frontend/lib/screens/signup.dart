@@ -1,5 +1,3 @@
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
-
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -14,6 +12,7 @@ class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _SignupPageState createState() => _SignupPageState();
 }
 
@@ -39,15 +38,15 @@ class _SignupPageState extends State<SignupPage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Column(
+                const Column(
                   children: <Widget>[
-                    const SizedBox(height: 60.0),
-                    const Text(
+                    SizedBox(height: 60.0),
+                    Text(
                       "Sign up",
                       style:
                           TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(
+                    SizedBox(
                       height: 20,
                     ),
                     Text(
@@ -155,13 +154,13 @@ class _SignupPageState extends State<SignupPage> {
                         signup(usernameController.text, emailController.text,
                             passwordController.text);
                       },
-                      child: const Text(
-                        "Sign up",
-                        style: TextStyle(fontSize: 20),
-                      ),
                       style: ElevatedButton.styleFrom(
                         shape: const StadiumBorder(),
                         padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text(
+                        "Sign up",
+                        style: TextStyle(fontSize: 20),
                       ),
                     )),
                 Row(
@@ -177,7 +176,7 @@ class _SignupPageState extends State<SignupPage> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => LoginPage(),
+                                builder: (context) => const LoginPage(),
                               ),
                             );
                           },
@@ -198,7 +197,7 @@ class _SignupPageState extends State<SignupPage> {
   Future<void> signup(String username, String email, String password) async {
     // do the signup here
     final response = await http.post(
-        Uri.parse('${Globals.ip}:7251/api/user/create'),
+        Uri.parse('${Globals.ip}/api/user/create'),
         body: {"username": username, "password": password, "email": email});
     if (response.statusCode == 200) {
 
@@ -227,13 +226,15 @@ class _SignupPageState extends State<SignupPage> {
 
       Globals.username = username;
 
+      // ignore: use_build_context_synchronously
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => MyHomePage(),
+          builder: (context) => const MyHomePage(),
         ),
       );
     } else {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Signup failed: ${response.reasonPhrase}'),

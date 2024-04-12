@@ -1,5 +1,3 @@
-// ignore_for_file: prefer_const_constructors
-
 import 'package:flutter/material.dart';
 import 'package:photoz/color.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,15 +5,16 @@ import 'package:photoz/screens/favourite.dart';
 
 class SearchScreen extends StatefulWidget {
   final String searched;
-  SearchScreen(this.searched, {Key? key}) : super(key: key);
+  const SearchScreen(this.searched, {super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _SearchScreenState createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  TextEditingController _controller = TextEditingController();
-  FocusNode _focusNode = FocusNode();
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   bool _isMicButton = true;
   List<String> recentSearches = [];
 
@@ -51,7 +50,7 @@ class _SearchScreenState extends State<SearchScreen> {
         appBar: AppBar(
             backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back),
             onPressed: () {
               // Handle back button press
               Navigator.of(context).pop();
@@ -86,7 +85,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           actions: [
             IconButton(
-              icon: _isMicButton ? Icon(Icons.mic) : Icon(Icons.clear),
+              icon: _isMicButton ? const Icon(Icons.mic) : const Icon(Icons.clear),
               onPressed: () {
                 setState(() {
                   if (_isMicButton) {
@@ -103,7 +102,7 @@ class _SearchScreenState extends State<SearchScreen> {
         body: ListView(
           children: recentSearches.map((query) {
             return ListTile(
-              leading: Icon(Icons.history),
+              leading: const Icon(Icons.history),
               title: Padding(
                 padding: const EdgeInsets.only(left: 20),
                 child: Text(query),

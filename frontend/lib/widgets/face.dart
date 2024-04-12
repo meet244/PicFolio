@@ -73,7 +73,7 @@ class FaceItem extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => UserProfileScreen(ip, faceId),
+              builder: (context) => UserProfileScreen(faceId),
             ),
           ),
         },
@@ -83,7 +83,7 @@ class FaceItem extends StatelessWidget {
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(10.0),
                     child: CachedNetworkImage(
-                      imageUrl: '$ip:7251/api/face/image/${Globals.username}/$faceId',
+                      imageUrl: '$ip/api/face/image/${Globals.username}/$faceId',
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
@@ -92,7 +92,7 @@ class FaceItem extends StatelessWidget {
                 : ClipRRect(
                     borderRadius: BorderRadius.circular(45.0),
                     child: CachedNetworkImage(
-                      imageUrl: '$ip:7251/api/face/image/${Globals.username}/$faceId',
+                      imageUrl: '$ip/api/face/image/${Globals.username}/$faceId',
                       width: 90,
                       height: 90,
                       fit: BoxFit.cover,

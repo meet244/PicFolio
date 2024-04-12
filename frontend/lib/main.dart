@@ -12,6 +12,6 @@ void main() {
     theme: ThemeData(useMaterial3: true, colorScheme: lightColorScheme),
     darkTheme: ThemeData(useMaterial3: true, colorScheme: darkColorScheme),
     debugShowCheckedModeBanner: false,
-    home: SplashScreen(),
+    home: const SplashScreen(),
     ));
 }

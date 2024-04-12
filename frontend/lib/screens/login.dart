@@ -1,7 +1,6 @@
-// ignore_for_file: prefer_const_constructors
-
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:photoz/color.dart';
 import 'package:photoz/screens/signup.dart';
@@ -14,6 +13,7 @@ class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _LoginPageState createState() => _LoginPageState();
 }
 
@@ -122,7 +122,7 @@ class _LoginPageState extends State<LoginPage> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => SignupPage()),
+              MaterialPageRoute(builder: (context) => const SignupPage()),
             );
           },
           child: const Text(
@@ -136,7 +136,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> checkLogin(String username, String password) async {
     // Check if the username and password are correct
     final response = await http
-        .post(Uri.parse('${Globals.ip}:7251/api/user/auth'), body: {
+        .post(Uri.parse('${Globals.ip}/api/user/auth'), body: {
       "username": username,
       "password": password
     });
@@ -153,13 +153,15 @@ class _LoginPageState extends State<LoginPage> {
 
         Globals.username = username;
 
+        // ignore: use_build_context_synchronously
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => MyHomePage()),
+          MaterialPageRoute(builder: (context) => const MyHomePage()),
         );
-        print('Login Successful');
+        if (kDebugMode) print('Login Successful');
       } else {
         // If the response is false, then the login is unsuccessful - show pop up
+        // ignore: use_build_context_synchronously
         showDialog(
           context: context,
           builder: (BuildContext context) {

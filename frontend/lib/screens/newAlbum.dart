@@ -1,5 +1,5 @@
-// ignore_for_file: prefer_const_constructors
-
+// ignore: file_names
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:http/http.dart' as http;
@@ -11,17 +11,18 @@ class CreateAlbum extends StatefulWidget {
   const CreateAlbum({super.key, required this.ip}); // Required parameter
 
   @override
+  // ignore: library_private_types_in_public_api
   _CreateAlbumPageState createState() => _CreateAlbumPageState();
 }
 
 class _CreateAlbumPageState extends State<CreateAlbum> {
-  TextEditingController _titleController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Create Album'),
+        title: const Text('Create Album'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -34,10 +35,10 @@ class _CreateAlbumPageState extends State<CreateAlbum> {
                   contentPadding: EdgeInsets.symmetric(vertical: 20.0),
                   labelText: 'Album Title',
                   labelStyle: TextStyle(fontSize: 20)),
-              style: TextStyle(fontSize: 20.0),
+              style: const TextStyle(fontSize: 20.0),
               maxLength: 30, // Set maximum length to 30 characters
             ),
-            SizedBox(height: 20.0),
+            const SizedBox(height: 20.0),
             ElevatedButton(
               onPressed: () {
                 if (_titleController.text.isEmpty) {
@@ -45,7 +46,7 @@ class _CreateAlbumPageState extends State<CreateAlbum> {
                 }
                 createAlbumApi(_titleController.text);
               },
-              child: Text('Create Album'),
+              child: const Text('Create Album'),
             ),
           ],
         ),
@@ -55,19 +56,20 @@ class _CreateAlbumPageState extends State<CreateAlbum> {
 
   void createAlbumApi(String title) async {
     final response = await http.post(
-      Uri.parse('${Globals.ip}:7251/api/album/create'),
+      Uri.parse('${Globals.ip}/api/album/create'),
       body: {
-        'username':'${Globals.username}',
+        'username':Globals.username,
         'name': _titleController.text,
       },
     );
 
     if (response.statusCode == 200) {
-      print('API call successful');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('API call successful');
+      if (kDebugMode) print('Response body: ${response.body}');
+      // ignore: use_build_context_synchronously
       Navigator.pop(context, true);
     } else {
-      print('API call failed with status code: ${response.statusCode}');
+      if (kDebugMode) print('API call failed with status code: ${response.statusCode}');
     }
   }
 }

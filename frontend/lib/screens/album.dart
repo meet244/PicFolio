@@ -1,17 +1,17 @@
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
+
+// ignore_for_file: use_build_context_synchronously
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:photoz/color.dart';
 import 'package:photoz/functions/selectedImages.dart';
 import 'package:photoz/globals.dart';
-import 'package:photoz/screens/settings.dart';
-import 'package:photoz/screens/shared.dart';
 import 'package:photoz/widgets/gridImages.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
+// ignore: must_be_immutable
 class Album extends StatefulWidget {
   final String albumId;
   String albumName;
@@ -20,6 +20,7 @@ class Album extends StatefulWidget {
   Album(this.albumId, this.albumName, this.albumDate, {super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _UserProfileScreenState createState() => _UserProfileScreenState();
 }
 
@@ -36,7 +37,7 @@ class _UserProfileScreenState extends State<Album> {
 
   Future<void> fetchImages() async {
     final response = await http.get(Uri.parse(
-        '${Globals.ip}:7251/api/album/${Globals.username}/${widget.albumId}'));
+        '${Globals.ip}/api/album/${Globals.username}/${widget.albumId}'));
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
 
@@ -55,7 +56,7 @@ class _UserProfileScreenState extends State<Album> {
 
   Future<void> rename(String name) async {
     final response = await http.post(
-      Uri.parse('${Globals.ip}:7251/api/album/rename'),
+      Uri.parse('${Globals.ip}/api/album/rename'),
       body: {
         'username': Globals.username,
         'album_id': widget.albumId,
@@ -73,7 +74,7 @@ class _UserProfileScreenState extends State<Album> {
 
   Future<bool> deleteAlbum() async {
     final response = await http.post(
-      Uri.parse('${Globals.ip}:7251/api/album/delete'),
+      Uri.parse('${Globals.ip}/api/album/delete'),
       body: {
         'album_id': widget.albumId,
         'username': Globals.username,
@@ -83,14 +84,16 @@ class _UserProfileScreenState extends State<Album> {
       Navigator.pop(context);
       return true;
     } else {
-      print('Failed to delete album');
+      if (kDebugMode) {
+        print('Failed to delete album');
+      }
       return false;
     }
   }
 
   Future<bool> redate() async {
     final response = await http.post(
-      Uri.parse('${Globals.ip}:7251/api/album/redate'),
+      Uri.parse('${Globals.ip}/api/album/redate'),
       body: {
         'username': Globals.username,
         'album_id': widget.albumId,
@@ -100,7 +103,9 @@ class _UserProfileScreenState extends State<Album> {
     if (response.statusCode == 200) {
       return true;
     } else {
-      print('Failed to redate album');
+      if (kDebugMode) {
+        print('Failed to redate album');
+      }
       return false;
     }
   }
@@ -112,7 +117,7 @@ class _UserProfileScreenState extends State<Album> {
       darkTheme: ThemeData(useMaterial3: true, colorScheme: darkColorScheme),
       debugShowCheckedModeBanner: false,
       home: (Globals.username == '')
-          ? Center(
+          ? const Center(
               child: CircularProgressIndicator(),
             )
           : Scaffold(
@@ -136,7 +141,7 @@ class _UserProfileScreenState extends State<Album> {
                             selectedImages.clear();
                           });
                         },
-                        icon: Icon(
+                        icon: const Icon(
                           Icons.close,
                           size: 32.0,
                         ),
@@ -146,7 +151,7 @@ class _UserProfileScreenState extends State<Album> {
                           // Navigate back
                           Navigator.pop(context);
                         },
-                        icon: Icon(
+                        icon: const Icon(
                           Icons.arrow_back,
                           size: 32.0,
                         ),
@@ -155,7 +160,7 @@ class _UserProfileScreenState extends State<Album> {
                   if (selectedImages.isNotEmpty)
                     IconButton(
                       onPressed: () {
-                        var ret = onDelete(Globals.ip, context, selectedImages);
+                        var ret = onDelete(context, selectedImages);
                         ret.then((value) {
                           if (value) {
                             setState(() {
@@ -164,12 +169,12 @@ class _UserProfileScreenState extends State<Album> {
                           }
                         });
                       },
-                      icon: Icon(Icons.delete_outlined, size: 32.0),
+                      icon: const Icon(Icons.delete_outlined, size: 32.0),
                     ),
                   if (selectedImages.isNotEmpty)
                     IconButton(
                       onPressed: () {
-                        var ret = onSend(Globals.ip, context, selectedImages);
+                        var ret = onSend(context, selectedImages);
                         ret.then((value) {
                           if (value) {
                             setState(() {
@@ -178,7 +183,7 @@ class _UserProfileScreenState extends State<Album> {
                           }
                         });
                       },
-                      icon: Icon(Icons.share_outlined, size: 32.0),
+                      icon: const Icon(Icons.share_outlined, size: 32.0),
                     ),
                   if (selectedImages.isNotEmpty)
                     PopupMenuButton(
@@ -186,7 +191,7 @@ class _UserProfileScreenState extends State<Album> {
                         return [
                           if (selectedImages.isNotEmpty)
                             PopupMenuItem(
-                              child: Row(
+                              child: const Row(
                                 children: [
                                   Icon(Icons.cancel_outlined, size: 32.0),
                                   SizedBox(width: 8.0),
@@ -196,7 +201,7 @@ class _UserProfileScreenState extends State<Album> {
                               onTap: () {
                                 // Handle edit option tap
                                 var ret = onRemoveFromAlbum(
-                                    Globals.ip, widget.albumId, selectedImages);
+                                    widget.albumId, selectedImages);
                                 ret.then((value) {
                                   if (value) {
                                     setState(() {
@@ -208,7 +213,7 @@ class _UserProfileScreenState extends State<Album> {
                             ),
                           if (selectedImages.isNotEmpty)
                             PopupMenuItem(
-                              child: Row(
+                              child: const Row(
                                 children: [
                                   Icon(Icons.edit_calendar_outlined,
                                       size: 32.0),
@@ -218,12 +223,12 @@ class _UserProfileScreenState extends State<Album> {
                               ),
                               onTap: () {
                                 // Handle copy option tap
-                                editDate(Globals.ip, context, selectedImages);
+                                editDate(context, selectedImages);
                               },
                             ),
                           if (selectedImages.isNotEmpty)
                             PopupMenuItem(
-                              child: Row(
+                              child: const Row(
                                 children: [
                                   Icon(Icons.groups_outlined, size: 32.0),
                                   SizedBox(width: 8.0),
@@ -232,12 +237,12 @@ class _UserProfileScreenState extends State<Album> {
                               ),
                               onTap: () {
                                 // Handle move option tap
-                                moveToShared(Globals.ip, selectedImages);
+                                moveToShared(selectedImages);
                               },
                             ),
                         ];
                       },
-                      child: Padding(
+                      child: const Padding(
                         padding: EdgeInsets.all(10.0),
                         child: Icon(
                           Icons.more_vert_outlined,
@@ -250,7 +255,7 @@ class _UserProfileScreenState extends State<Album> {
                       itemBuilder: (BuildContext context) {
                         return [
                           PopupMenuItem(
-                            child: Row(
+                            child: const Row(
                               children: [
                                 Icon(Icons.edit_outlined, size: 32.0),
                                 SizedBox(width: 8.0),
@@ -267,7 +272,7 @@ class _UserProfileScreenState extends State<Album> {
                                       TextEditingController(text: albumName);
 
                                   return AlertDialog(
-                                    title: Text('Rename Album'),
+                                    title: const Text('Rename Album'),
                                     content: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
@@ -287,7 +292,7 @@ class _UserProfileScreenState extends State<Album> {
                                               onPressed: () {
                                                 Navigator.pop(context);
                                               },
-                                              child: Text('Cancel'),
+                                              child: const Text('Cancel'),
                                             ),
                                             TextButton(
                                               onPressed: () {
@@ -295,7 +300,7 @@ class _UserProfileScreenState extends State<Album> {
                                                     textEditingController.text);
                                                 Navigator.pop(context);
                                               },
-                                              child: Text('Save'),
+                                              child: const Text('Save'),
                                             ),
                                           ],
                                         ),
@@ -307,7 +312,7 @@ class _UserProfileScreenState extends State<Album> {
                             },
                           ),
                           PopupMenuItem(
-                            child: Row(
+                            child: const Row(
                               children: [
                                 Icon(Icons.delete_outlined, size: 32.0),
                                 SizedBox(width: 8.0),
@@ -320,22 +325,22 @@ class _UserProfileScreenState extends State<Album> {
                                 context: context,
                                 builder: (BuildContext context) {
                                   return AlertDialog(
-                                    title: Text('Delete Album'),
-                                    content: Text(
+                                    title: const Text('Delete Album'),
+                                    content: const Text(
                                         'Are you sure you want to delete this album?\nThis action is irreversible.'),
                                     actions: [
                                       TextButton(
                                         onPressed: () {
                                           Navigator.pop(context);
                                         },
-                                        child: Text('Cancel'),
+                                        child: const Text('Cancel'),
                                       ),
                                       TextButton(
                                         onPressed: () {
                                           deleteAlbum();
                                           Navigator.pop(context);
                                         },
-                                        child: Text('Delete'),
+                                        child: const Text('Delete'),
                                       ),
                                     ],
                                   );
@@ -345,7 +350,7 @@ class _UserProfileScreenState extends State<Album> {
                           ),
                         ];
                       },
-                      child: Padding(
+                      child: const Padding(
                         padding: EdgeInsets.all(10.0),
                         child: Icon(
                           Icons.more_vert_outlined,
@@ -383,8 +388,8 @@ class _UserProfileScreenState extends State<Album> {
                               padding: const EdgeInsets.only(bottom: 10),
                               child: Row(
                                 children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(
+                                  const Padding(
+                                    padding: EdgeInsets.only(
                                       left: 12,
                                     ),
                                     child: Icon(
@@ -392,7 +397,7 @@ class _UserProfileScreenState extends State<Album> {
                                       size: 20,
                                     ),
                                   ),
-                                  SizedBox(width: 10.0),
+                                  const SizedBox(width: 10.0),
                                   Text(
                                     '$cnt photos',
                                     style: const TextStyle(fontSize: 16.0),

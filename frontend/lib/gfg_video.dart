@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:photoz/globals.dart';
 import 'package:video_player/video_player.dart';
 
-void main() => runApp(VideoPlayerApp());
+void main() => runApp(const VideoPlayerApp());
 
 class VideoPlayerApp extends StatelessWidget {
+  const VideoPlayerApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'GeeksForGeeks',
       home: VideoPlayerScreen(),
@@ -19,9 +21,10 @@ class VideoPlayerApp extends StatelessWidget {
 }
 
 class VideoPlayerScreen extends StatefulWidget {
-  VideoPlayerScreen();
+  const VideoPlayerScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _VideoPlayerScreenState createState() => _VideoPlayerScreenState();
 }
 
@@ -33,7 +36,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void initState() {
     _controller = VideoPlayerController.networkUrl(
       // Uri.parse('https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
-      // Uri.parse('http://192.168.0.107:7251/api/asset/${Globals.username}/318/2024/02/15'),
+      // Uri.parse('http://192.168.0.107/api/asset/${Globals.username}/318/2024/02/15'),
       Uri.parse('https://c975-203-188-230-171.ngrok-free.app/api/asset/${Globals.username}/318/2024/02/15'),
     );
     _initializeVideoPlayerFuture = _controller.initialize();
@@ -55,7 +58,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('GeeksForGeeks'),
+        title: const Text('GeeksForGeeks'),
         backgroundColor: Colors.green,
       ),
       body: FutureBuilder(
@@ -78,7 +81,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               ),
             );
           } else {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
         },
       ),

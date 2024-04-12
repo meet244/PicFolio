@@ -1,6 +1,7 @@
-// ignore_for_file: prefer_const_constructors
+// ignore: file_names
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import 'dart:async';
@@ -51,10 +52,10 @@ class ImageGridView extends StatefulWidget {
   });
 
   @override
-  _ImageGridViewState createState() => _ImageGridViewState();
+  ImageGridViewState createState() => ImageGridViewState();
 }
 
-class _ImageGridViewState extends State<ImageGridView> {
+class ImageGridViewState extends State<ImageGridView> {
   final List<int> _selectedImages = [];
   bool _enabled = true;
 
@@ -63,13 +64,11 @@ class _ImageGridViewState extends State<ImageGridView> {
     // print(imageId);
     date = date.replaceAll('-', '/');
     String url =
-        '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId/$date';
+        '${Globals.ip}/api/preview/${Globals.username}/$imageId/$date';
     if (widget.isBin || date == '') {
-      url =
-          '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId';
+      url = '${Globals.ip}/api/preview/${Globals.username}/$imageId';
     } else {
-      url =
-          '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId/$date';
+      url = '${Globals.ip}/api/preview/${Globals.username}/$imageId/$date';
     }
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
@@ -80,7 +79,7 @@ class _ImageGridViewState extends State<ImageGridView> {
   }
 
   void _toggleSelection(int imageId) {
-    print(imageId);
+    if (kDebugMode) print(imageId);
     setState(() {
       if (_selectedImages.contains(imageId)) {
         _selectedImages.remove(imageId);
@@ -93,10 +92,10 @@ class _ImageGridViewState extends State<ImageGridView> {
 
   Future<void> restoreImage() async {
     var imgs = _selectedImages.join(',');
-    final response = await http.post(Uri.parse(
-        '${Globals.ip}:7251/api/restore/${Globals.username}/$imgs'));
+    final response = await http.post(
+        Uri.parse('${Globals.ip}/api/restore/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
-      print('Image restored');
+      if (kDebugMode) print('Image restored');
       setState(() {
         _selectedImages.clear();
       });
@@ -107,19 +106,26 @@ class _ImageGridViewState extends State<ImageGridView> {
 
   Future<void> removeAlbumImages() async {
     final response = await http
-        .post(Uri.parse('${Globals.ip}:7251/api/album/remove'), body: {
-      'username': '${Globals.username}',
+        .post(Uri.parse('${Globals.ip}/api/album/remove'), body: {
+      'username': Globals.username,
       'album_id': widget.albumOrFaceId.toString(),
       'asset_id': _selectedImages.join(','),
     });
     if (response.statusCode == 200) {
-      print('Image removed from album');
+      if (kDebugMode) print('Image removed from album');
       setState(() {
         _selectedImages.clear();
       });
     } else {
       throw Exception('Failed to remove image from album');
     }
+  }
+
+  void addImages(List<dynamic> newImages, {bool isLastPage=false}) {
+    setState(() {
+      widget.images.addAll(newImages);
+      widget.bottomload = !isLastPage;
+    });
   }
 
   @override
@@ -148,15 +154,18 @@ class _ImageGridViewState extends State<ImageGridView> {
         Skeletonizer(
           enabled: _enabled,
           child: ListView.builder(
-            physics: NeverScrollableScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
             itemCount: widget.bottomload
                 ? widget.images.length + 1
                 : widget.images.length,
             itemBuilder: (context, index) {
               if (widget.bottomload && index == widget.images.length) {
-                return Center(
-                  child: CircularProgressIndicator(),
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 35),
+                    child: CircularProgressIndicator(),
+                  ),
                 );
               }
               var entry = widget.images[index];
@@ -274,13 +283,13 @@ class _ImageGridViewState extends State<ImageGridView> {
                               tag: imageId.toString(),
                               child: CachedNetworkImage(
                                 imageUrl: (item.length >= 2 && item[1] != null)
-                                    ? '${Globals.ip}:7251/api/preview/${item[1]}/$imageId'
-                                    : '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId',
-                                placeholder: (context, url) => Center(
-                                  child: const CircularProgressIndicator(),
+                                    ? '${Globals.ip}/api/preview/${item[1]}/$imageId'
+                                    : '${Globals.ip}/api/preview/${Globals.username}/$imageId',
+                                placeholder: (context, url) => const Center(
+                                  child: CircularProgressIndicator(),
                                 ),
-                                errorWidget: (context, url, error) => Center(
-                                  child: const Icon(
+                                errorWidget: (context, url, error) => const Center(
+                                  child: Icon(
                                     Icons.error,
                                     color: Colors.red,
                                   ),
@@ -300,7 +309,7 @@ class _ImageGridViewState extends State<ImageGridView> {
                               Positioned.fill(
                                 child: Container(
                                   color: Colors.black.withOpacity(0.5),
-                                  child: Icon(
+                                  child: const Icon(
                                     Icons.check_circle,
                                     color: Colors.white,
                                     size: 50,
@@ -328,15 +337,15 @@ class _ImageGridViewState extends State<ImageGridView> {
                                 left: 7,
                                 child: Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.play_circle_fill,
                                       color: Colors.white,
                                       size: 20,
                                     ),
-                                    SizedBox(width: 4),
+                                    const SizedBox(width: 4),
                                     Text(
                                       item[2].toString(),
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
                                       ),
@@ -404,10 +413,11 @@ class ImageDetailScreen extends StatefulWidget {
   final List<int> allImages;
   final String? ofuser;
 
-  ImageDetailScreen(this.imageId,
+  const ImageDetailScreen(this.imageId,
       {this.date, this.allImages = const [], this.ofuser, super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _ImageDetailScreenState createState() => _ImageDetailScreenState();
 }
 
@@ -422,6 +432,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   int currentIndex = 0;
 
+  // ignore: prefer_typing_uninitialized_variables
   var imageDetails;
 
   late VideoPlayerController videoPlayerController;
@@ -475,15 +486,15 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   }
 
   Future<void> initVideo({bool nodate = false}) async {
-    print('Init video');
-    print(widget.allImages[currentIndex]);
+    if (kDebugMode) print('Init video');
+    if (kDebugMode) print(widget.allImages[currentIndex]);
     // videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url))
     String url = (widget.ofuser != null)
-        ? '${Globals.ip}:7251/api/asset/${widget.ofuser}/${widget.allImages[currentIndex]}'
-        : '${Globals.ip}:7251/api/asset/${Globals.username}/${widget.allImages[currentIndex]}';
+        ? '${Globals.ip}/api/asset/${widget.ofuser}/${widget.allImages[currentIndex]}'
+        : '${Globals.ip}/api/asset/${Globals.username}/${widget.allImages[currentIndex]}';
 
     if (!nodate) {
-      url = url + '/${widget.date}';
+      url = '$url/${widget.date}';
     }
 
     videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url))
@@ -499,28 +510,28 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
   }
 
   Future<void> addFace(String faceId) async {
-    final response = await http
-        .post(Uri.parse('${Globals.ip}:7251/api/face/add'), body: {
-      'username': '${Globals.username}',
+    final response =
+        await http.post(Uri.parse('${Globals.ip}/api/face/add'), body: {
+      'username': Globals.username,
       'asset_id': widget.imageId.toString(),
       'face_id': faceId,
     });
     if (response.statusCode == 200) {
-      print('Face added');
+      if (kDebugMode) print('Face added');
     } else {
       throw Exception('Failed to add face');
     }
   }
 
   Future<void> removeFace(String faceId) async {
-    final response = await http
-        .post(Uri.parse('${Globals.ip}:7251/api/face/remove'), body: {
-      'username': '${Globals.username}',
+    final response =
+        await http.post(Uri.parse('${Globals.ip}/api/face/remove'), body: {
+      'username': Globals.username,
       'asset_id': widget.imageId.toString(),
       'face_id': faceId,
     });
     if (response.statusCode == 200) {
-      print('Face removed');
+      if (kDebugMode) print('Face removed');
     } else {
       throw Exception('Failed to remove face');
     }
@@ -544,8 +555,8 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                     itemCount: widget.allImages.length,
                     controller: PageController(initialPage: currentIndex),
                     onPageChanged: (index) {
-                      print('Page changed to index: $index');
-                      print('Current index: $currentIndex');
+                      if (kDebugMode) print('Page changed to index: $index');
+                      if (kDebugMode) print('Current index: $currentIndex');
                       setState(() {
                         imageDetails = null;
                         currentIndex = index;
@@ -583,18 +594,18 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                                                 5.0,
                                       ),
                                       if (!isMainImageLoaded)
-                                        Center(
+                                        const Center(
                                           child: CircularProgressIndicator(),
                                         ),
                                     ]),
                                   );
                                 } else {
-                                  return SizedBox(); // Return an empty widget if there's no data
+                                  return const SizedBox(); // Return an empty widget if there's no data
                                 }
                               },
                             )
                           : Padding(
-                              padding: EdgeInsets.symmetric(vertical: 65),
+                              padding: const EdgeInsets.symmetric(vertical: 65),
                               child: AspectRatio(
                                 aspectRatio:
                                     videoPlayerController.value.aspectRatio,
@@ -615,12 +626,12 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
             ),
             AnimatedOpacity(
               opacity: showBottomBar ? 1.0 : 0.0,
-              duration: Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 200),
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
@@ -642,15 +653,15 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                               context: context,
                               builder: (BuildContext context) {
                                 return AlertDialog(
-                                  title: Text('Confirmation'),
-                                  content: Text(
+                                  title: const Text('Confirmation'),
+                                  content: const Text(
                                       'Are you sure you want to delete this image?'),
                                   actions: [
                                     TextButton(
                                       onPressed: () {
                                         Navigator.of(context).pop();
                                       },
-                                      child: Text('Cancel'),
+                                      child: const Text('Cancel'),
                                     ),
                                     TextButton(
                                       onPressed: () {
@@ -661,21 +672,21 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                                         // go to previous screen with message that imageid is deleted
                                         Navigator.pop(context, widget.imageId);
                                       },
-                                      child: Text('Delete'),
+                                      child: const Text('Delete'),
                                     ),
                                   ],
                                 );
                               },
                             );
                           },
-                          icon: Icon(Icons.delete_outline, color: Colors.white),
+                          icon: const Icon(Icons.delete_outline, color: Colors.white),
                         ),
                       if (widget.date != null)
                         IconButton(
                           onPressed: () {
                             shareImage();
                           },
-                          icon: Icon(Icons.share_outlined, color: Colors.white),
+                          icon: const Icon(Icons.share_outlined, color: Colors.white),
                         ),
                       if (widget.date != null)
                         if (widget.ofuser == null ||
@@ -686,7 +697,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                                 // make API call to unlike image
                                 likeImage(widget.imageId);
                               },
-                              icon: Icon(Icons.favorite, color: Colors.red),
+                              icon: const Icon(Icons.favorite, color: Colors.red),
                             )
                           else
                             IconButton(
@@ -694,7 +705,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                                 // make API call to like image
                                 likeImage(widget.imageId);
                               },
-                              icon: Icon(Icons.favorite_outline,
+                              icon: const Icon(Icons.favorite_outline,
                                   color: Colors.white),
                             ),
                       if (widget.date == null)
@@ -724,9 +735,9 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                     });
                   },
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     height: kToolbarHeight,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -740,7 +751,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: Icon(Icons.arrow_back, color: Colors.white),
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
                           onPressed: () {
                             if (!showBottomBar) {
                               return;
@@ -750,7 +761,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                         ),
                         if (widget.date != null)
                           IconButton(
-                            icon: Icon(Icons.more_vert, color: Colors.white),
+                            icon: const Icon(Icons.more_vert, color: Colors.white),
                             onPressed: () {
                               if (!showBottomBar) {
                                 return;
@@ -783,7 +794,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
               return Container(
                 height: 200,
                 alignment: Alignment.center,
-                child: CircularProgressIndicator(),
+                child: const CircularProgressIndicator(),
               );
             } else {
               if (snapshot.hasError) {
@@ -802,21 +813,21 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                       // mainAxisSize: MainAxisSize.min,
                       children: [
                         // Faces will show up here
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 40),
                         if (widget.ofuser == null)
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("Faces",
+                                const Text("Faces",
                                     style: TextStyle(
                                         fontSize: 24,
                                         fontWeight: FontWeight.bold)),
                                 Row(
                                   children: [
                                     IconButton(
-                                      icon: Icon(Icons.add_circle_outline),
+                                      icon: const Icon(Icons.add_circle_outline),
                                       onPressed: () {
                                         // Handle plus icon press
                                         Navigator.push(
@@ -846,7 +857,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                                     ),
                                     if (snapshot.data['faces'].isNotEmpty)
                                       IconButton(
-                                        icon: Icon(Icons.remove_circle_outline),
+                                        icon: const Icon(Icons.remove_circle_outline),
                                         onPressed: () {
                                           // Handle minus icon press
                                           Navigator.push(
@@ -881,7 +892,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
                           ),
                         if (snapshot.data['faces'].isEmpty)
                           if (widget.ofuser == null)
-                            SizedBox(
+                            const SizedBox(
                               height: 10,
                             ),
                         if (snapshot.data['faces'].isNotEmpty)
@@ -989,13 +1000,14 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
       // Share the image using the share_plus package
 
+      // ignore: deprecated_member_use
       await Share.shareFiles(
-        ['${tempFile.path}'],
+        [(tempFile.path)],
         text: 'I shared this image from PicFolio. Try it out!',
         subject: 'Image Sharing',
       );
     } catch (e) {
-      print('Error sharing image: $e');
+      if (kDebugMode) print('Error sharing image: $e');
 
       // Handle the error, e.g., show a snackbar or log the error
     }
@@ -1006,7 +1018,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
       return imageDetails;
     }
     String url =
-        '${Globals.ip}:7251/api/details/${Globals.username}/${widget.allImages[currentIndex]}';
+        '${Globals.ip}/api/details/${Globals.username}/${widget.allImages[currentIndex]}';
     if (widget.ofuser != null) {
       url = url.replaceFirst(Globals.username, widget.ofuser!);
     }
@@ -1022,12 +1034,11 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> likeImage(int photoId) async {
     final response = await http.post(
-      Uri.parse(
-          '${Globals.ip}:7251/api/like/${Globals.username}/$photoId'),
-      body: {'username': '${Globals.username}'},
+      Uri.parse('${Globals.ip}/api/like/${Globals.username}/$photoId'),
+      body: {'username': Globals.username},
     );
     if (response.statusCode == 200) {
-      print('Image Liked/Unliked');
+      if (kDebugMode) print('Image Liked/Unliked');
       setState(() {
         isliked = !isliked;
       });
@@ -1038,8 +1049,7 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> isImageLiked(int photoId) async {
     final response = await http.get(
-      Uri.parse(
-          '${Globals.ip}:7251/api/liked/${Globals.username}/$photoId'),
+      Uri.parse('${Globals.ip}/api/liked/${Globals.username}/$photoId'),
     );
     if (response.statusCode == 200) {
       var data = json.decode(response.body);
@@ -1053,10 +1063,10 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> deleteImage(List<String> imageIds) async {
     var imgs = imageIds.join(',');
-    final response = await http.delete(Uri.parse(
-        '${Globals.ip}:7251/api/delete/${Globals.username}/$imgs'));
+    final response = await http.delete(
+        Uri.parse('${Globals.ip}/api/delete/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
-      print('Image deleted');
+      if (kDebugMode) print('Image deleted');
     } else {
       throw Exception('Failed to delete image');
     }
@@ -1064,10 +1074,10 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
 
   Future<void> restoreImage(List<String> imageIds) async {
     var imgs = imageIds.join(',');
-    final response = await http.post(Uri.parse(
-        '${Globals.ip}:7251/api/restore/${Globals.username}/$imgs'));
+    final response = await http.post(
+        Uri.parse('${Globals.ip}/api/restore/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
-      print('Image restored');
+      if (kDebugMode) print('Image restored');
     } else {
       throw Exception('Failed to restore image');
     }
@@ -1077,10 +1087,10 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     String url;
     if (widget.date != null && !nodate) {
       url =
-          '${Globals.ip}:7251/api/preview/${Globals.username}/${widget.allImages[currentIndex]}/${widget.date}';
+          '${Globals.ip}/api/preview/${Globals.username}/${widget.allImages[currentIndex]}/${widget.date}';
     } else {
       url =
-          '${Globals.ip}:7251/api/preview/${Globals.username}/${widget.allImages[currentIndex]}';
+          '${Globals.ip}/api/preview/${Globals.username}/${widget.allImages[currentIndex]}';
     }
     if (widget.ofuser != null) {
       url = url.replaceFirst(Globals.username, widget.ofuser!);
@@ -1103,8 +1113,8 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
       }
       return response.bodyBytes;
     } else {
-      print(response.statusCode);
-      print(response.reasonPhrase);
+      if (kDebugMode) print(response.statusCode);
+      if (kDebugMode) print(response.reasonPhrase);
       throw Exception('Failed to load preview image');
     }
   }
@@ -1113,10 +1123,10 @@ class _ImageDetailScreenState extends State<ImageDetailScreen> {
     String url;
     if (widget.date != null && !nodate) {
       url =
-          '${Globals.ip}:7251/api/asset/${Globals.username}/${widget.allImages[currentIndex]}/${widget.date}';
+          '${Globals.ip}/api/asset/${Globals.username}/${widget.allImages[currentIndex]}/${widget.date}';
     } else {
       url =
-          '${Globals.ip}:7251/api/asset/${Globals.username}/${widget.allImages[currentIndex]}';
+          '${Globals.ip}/api/asset/${Globals.username}/${widget.allImages[currentIndex]}';
     }
     if (widget.ofuser != null) {
       url = url.replaceFirst(Globals.username, widget.ofuser!);
@@ -1150,14 +1160,14 @@ class DetailComponent extends StatelessWidget {
       child: Row(
         children: [
           Icon(iconData, size: 30),
-          SizedBox(width: 20),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     overflow: TextOverflow.ellipsis,
                     fontSize: 20,
                   ),
@@ -1168,7 +1178,7 @@ class DetailComponent extends StatelessWidget {
                 if (subtitle.isNotEmpty)
                   Text(
                     subtitle,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                     ),
                     textAlign: TextAlign.start,

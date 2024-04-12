@@ -1,6 +1,5 @@
-// ignore_for_file: prefer_const_constructors, prefer_is_empty, prefer_const_literals_to_create_immutables
-
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
@@ -14,9 +13,10 @@ import 'package:photoz/widgets/gridImages.dart';
 class HomeLeft extends StatefulWidget {
   // final Function(List<int>) onSelect;
 
-  HomeLeft({Key? key}) : super(key: key);
+  const HomeLeft({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _HomeLeftState createState() => _HomeLeftState();
 }
 
@@ -45,12 +45,14 @@ class _HomeLeftState extends State<HomeLeft> {
 
   Future<void> fetchImages() async {
     if (!isLoading && !bottomreached) {
-      setState(() {
-        page++;
-        isLoading = true;
-      });
+      page++;
+      if (page == 0) {
+        setState(() {
+          isLoading = true;
+        });
+      }
       final response = await http.post(
-        Uri.parse('${Globals.ip}:7251/api/list/general'),
+        Uri.parse('${Globals.ip}/api/list/general'),
         body: {'username': Globals.username, "page": page.toString()},
       );
       if (response.statusCode == 200) {
@@ -58,20 +60,30 @@ class _HomeLeftState extends State<HomeLeft> {
 
         if (data.isEmpty) {
           bottomreached = true;
-          print('Bottom Reached');
+          if (kDebugMode) print('Bottom Reached');
         }
 
-        setState(() {
-          images.addAll(data);
-          isLoading = false;
-        });
+        if (images.isEmpty) {
+          if (kDebugMode) print('First Fetch');
+          setState(() {
+            images = data;
+            isLoading = false;
+          });
+          return;
+        } else {
+          if (kDebugMode) print('Fetching more');
+          addImagesToList(data);
+        }
 
-        print(images);
+        if (kDebugMode) print(images);
       } else {
         throw Exception('Failed to load images');
       }
     }
   }
+
+  final GlobalKey<ImageGridViewState> imageGridViewKey =
+      GlobalKey<ImageGridViewState>();
 
   @override
   Widget build(BuildContext context) {
@@ -79,15 +91,15 @@ class _HomeLeftState extends State<HomeLeft> {
       appBar: AppBar(
         title: Row(
           children: [
-            (allselected.length == 0)
-                ? Text("PicFolio")
+            (allselected.isEmpty)
+                ? const Text("PicFolio")
                 : (allselected.length == 1)
                     ? Text("${allselected.length} item")
                     : Text(
                         "${allselected.length} items"), // Show count if images are selected
           ],
         ),
-        leading: (allselected.length > 0)
+        leading: (allselected.isNotEmpty)
             ? IconButton(
                 onPressed: () {
                   // Clear selection
@@ -95,7 +107,7 @@ class _HomeLeftState extends State<HomeLeft> {
                     allselected.clear();
                   });
                 },
-                icon: Icon(
+                icon: const Icon(
                   Icons.close,
                   size: 32.0,
                 ),
@@ -109,13 +121,13 @@ class _HomeLeftState extends State<HomeLeft> {
                 var ret = getimage(Globals.ip, context);
                 ret.then((value) {
                   if (value) {
-                    print('Image Uploaded');
+                    if (kDebugMode) print('Image Uploaded');
                   }
                 });
               },
-              icon: Icon(Icons.add_a_photo_outlined, size: 32.0),
+              icon: const Icon(Icons.add_a_photo_outlined, size: 32.0),
             ),
-          if (allselected.length == 0)
+          if (allselected.isEmpty)
             IconButton(
               onPressed: () {
                 // Open settings page
@@ -126,12 +138,12 @@ class _HomeLeftState extends State<HomeLeft> {
                   ),
                 );
               },
-              icon: Icon(Icons.settings_outlined, size: 32.0),
+              icon: const Icon(Icons.settings_outlined, size: 32.0),
             ),
-          if (allselected.length > 0)
+          if (allselected.isNotEmpty)
             IconButton(
               onPressed: () {
-                var ret = onDelete(Globals.ip, context, allselected);
+                var ret = onDelete(context, allselected);
                 ret.then((value) {
                   if (value) {
                     setState(() {
@@ -140,12 +152,12 @@ class _HomeLeftState extends State<HomeLeft> {
                   }
                 });
               },
-              icon: Icon(Icons.delete_outlined, size: 32.0),
+              icon: const Icon(Icons.delete_outlined, size: 32.0),
             ),
-          if (allselected.length > 0)
+          if (allselected.isNotEmpty)
             IconButton(
               onPressed: () {
-                var ret = onSend(Globals.ip, context, allselected);
+                var ret = onSend(context, allselected);
                 ret.then((value) {
                   if (value) {
                     setState(() {
@@ -154,14 +166,14 @@ class _HomeLeftState extends State<HomeLeft> {
                   }
                 });
               },
-              icon: Icon(Icons.share_outlined, size: 32.0),
+              icon: const Icon(Icons.share_outlined, size: 32.0),
             ),
           if (allselected.isNotEmpty)
             PopupMenuButton(
               itemBuilder: (BuildContext context) {
                 return [
                   PopupMenuItem(
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.add_outlined, size: 32.0),
                         SizedBox(width: 8.0),
@@ -172,13 +184,13 @@ class _HomeLeftState extends State<HomeLeft> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => SelectAlbumsScreen(Globals.ip),
+                          builder: (context) => const SelectAlbumsScreen(),
                         ),
                       ).then((selectedAlbum) {
                         // Use the selectedAlbum value here
                         if (selectedAlbum != null) {
                           // Handle the selected album
-                          onAddToAlbum(Globals.ip, selectedAlbum, allselected)
+                          onAddToAlbum(selectedAlbum, allselected)
                               .then((value) {
                             if (value) {
                               setState(() {
@@ -191,7 +203,7 @@ class _HomeLeftState extends State<HomeLeft> {
                     },
                   ),
                   PopupMenuItem(
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.edit_calendar_outlined, size: 32.0),
                         SizedBox(width: 8.0),
@@ -200,11 +212,11 @@ class _HomeLeftState extends State<HomeLeft> {
                     ),
                     onTap: () {
                       // Handle copy option tap
-                      editDate(Globals.ip, context, allselected);
+                      editDate(context, allselected);
                     },
                   ),
                   PopupMenuItem(
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.groups_outlined, size: 32.0),
                         SizedBox(width: 8.0),
@@ -213,12 +225,12 @@ class _HomeLeftState extends State<HomeLeft> {
                     ),
                     onTap: () {
                       // Handle move option tap
-                      moveToShared(Globals.ip, allselected);
+                      moveToShared(allselected);
                     },
                   ),
                 ];
               },
-              child: Padding(
+              child: const Padding(
                 padding: EdgeInsets.all(10.0),
                 child: Icon(
                   Icons.more_vert_outlined,
@@ -229,12 +241,13 @@ class _HomeLeftState extends State<HomeLeft> {
         ],
       ),
       body: (Globals.username == '' || isLoading)
-          ? Center(
+          ? const Center(
               child: CircularProgressIndicator(),
             )
           : SingleChildScrollView(
               controller: _scrollController,
               child: ImageGridView(
+                key: imageGridViewKey,
                 ip: Globals.ip,
                 images: images,
                 gridCount: 3,
@@ -251,5 +264,10 @@ class _HomeLeftState extends State<HomeLeft> {
               ),
             ),
     );
+  }
+
+  void addImagesToList(List<dynamic> newImages) {
+    imageGridViewKey.currentState
+        ?.addImages(newImages, isLastPage: bottomreached);
   }
 }

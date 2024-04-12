@@ -1,5 +1,6 @@
 // ignore_for_file: prefer_const_constructors
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:photoz/globals.dart';
@@ -7,14 +8,12 @@ import 'dart:convert';
 import 'package:photoz/widgets/gridImages.dart';
 
 
-// ignore: must_be_immutable
 class Duplicates extends StatefulWidget {
-  final String ip;
 
-  // Constructor with ip parameter
-  const Duplicates({super.key, required this.ip});
+  const Duplicates({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _DuplicatesScreenState createState() => _DuplicatesScreenState();
 }
 
@@ -43,7 +42,7 @@ class _DuplicatesScreenState extends State<Duplicates> {
 
   Future<void> fetchImages() async {
     final response = await http.post(
-      Uri.parse('${Globals.ip}:7251/api/list/duplicate'),
+      Uri.parse('${Globals.ip}/api/list/duplicate'),
       body: {
         'username': Globals.username,
       },
@@ -69,12 +68,12 @@ class _DuplicatesScreenState extends State<Duplicates> {
   Future<bool> deleteImage(List<String> imageIds) async {
     var imgs = imageIds.join(',');
     final response = await http
-        .delete(Uri.parse('${Globals.ip}:7251/api/delete/${Globals.username}/$imgs'));
+        .delete(Uri.parse('${Globals.ip}/api/delete/${Globals.username}/$imgs'));
     if (response.statusCode == 200) {
-      print('Image deleted');
+      if (kDebugMode) print('Image deleted');
       return true;
     } else {
-      print("Failed to delete image");
+      if (kDebugMode) print("Failed to delete image");
       return false;
       // throw Exception('Failed to delete image');
     }
@@ -123,9 +122,9 @@ class _DuplicatesScreenState extends State<Duplicates> {
                   String title =
                       images[index][0].toString().replaceAll("-", "/");
                   String imageUrl1 =
-                      '${Globals.ip}:7251/api/preview/${Globals.username}/${images[index][1] as int}/$title';
+                      '${Globals.ip}/api/preview/${Globals.username}/${images[index][1] as int}/$title';
                   String imageUrl2 =
-                      '${Globals.ip}:7251/api/preview/${Globals.username}/${images[index][2] as int}/$title';
+                      '${Globals.ip}/api/preview/${Globals.username}/${images[index][2] as int}/$title';
                   return SizedBox(
                     // height: 250, // Adjust the height as needed
                     child: Column(
@@ -148,7 +147,7 @@ class _DuplicatesScreenState extends State<Duplicates> {
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.all(3),
-                                child: Container(
+                                child: SizedBox(
                                   width: double.infinity,
                                   height: 200, // Adjust the height as needed
                                   child: GestureDetector(
@@ -181,11 +180,11 @@ class _DuplicatesScreenState extends State<Duplicates> {
                                             return LinearGradient(
                                               begin: Alignment.topLeft,
                                               end: Alignment.center,
-                                              colors: [
+                                              colors: const [
                                                 Colors.black54,
                                                 Colors.transparent
                                               ],
-                                              stops: [0.0, 0.4],
+                                              stops: const [0.0, 0.4],
                                             ).createShader(bounds);
                                           },
                                           blendMode: BlendMode.srcATop,
@@ -250,7 +249,7 @@ class _DuplicatesScreenState extends State<Duplicates> {
                                   onLongPress: () {
                                     toggleSelection(images[index][2] as int);
                                   },
-                                  child: Container(
+                                  child: SizedBox(
                                     width: double.infinity,
                                     height: 200, // Adjust the height as needed
                                     child: Stack(children: [
@@ -307,11 +306,11 @@ class _DuplicatesScreenState extends State<Duplicates> {
                                 // Handle the result here
                                 if (success) {
                                   // Delete operation was successful
-                                  print('Image deleted successfully');
+                                  if (kDebugMode) print('Image deleted successfully');
                                   fetchImages();
                                 } else {
                                   // Delete operation failed
-                                  print('Failed to delete image');
+                                  if (kDebugMode) print('Failed to delete image');
                                 }
                               });
                               // Navigator.pop(context);
@@ -337,7 +336,7 @@ class _DuplicatesScreenState extends State<Duplicates> {
 
   Future<List<int>> fetchPreviewImage(int imageId, String date) async {
     final response = await http.get(Uri.parse(
-        '${Globals.ip}:7251/api/preview/${Globals.username}/$imageId/${date}'));
+        '${Globals.ip}/api/preview/${Globals.username}/$imageId/$date'));
     if (response.statusCode == 200) {
       return response.bodyBytes;
     } else {

@@ -1,7 +1,6 @@
-// ignore_for_file: prefer_const_constructors
-
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:percent_indicator/percent_indicator.dart';
@@ -11,13 +10,17 @@ import 'package:photoz/globals.dart';
 // import 'linechart.dart';
 
 class StatisticsPage extends StatefulWidget {
+  const StatisticsPage({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _StatisticsPageState createState() => _StatisticsPageState();
 }
 
 class _StatisticsPageState extends State<StatisticsPage> {
   int total = 0;
 
+  // ignore: prefer_typing_uninitialized_variables
   var apiResponse;
 
   @override
@@ -28,14 +31,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   void fetchdata() async {
     final response = await http.post(
-      Uri.parse('${Globals.ip}:7251/api/stats'),
+      Uri.parse('${Globals.ip}/api/stats'),
       body: {
         'username': Globals.username,
       },
     );
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
-      print(data);
+      if (kDebugMode) print(data);
       // count total assets
       total = data['image_counts'].values.fold(0, (sum, count) => sum + count) +
           data['video_counts'].values.fold(0, (sum, count) => sum + count);
@@ -51,10 +54,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text('Stats'),
+          title: const Text('Stats'),
         ),
         body: (apiResponse == null)
-            ? Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
                 scrollDirection: Axis.vertical,
                 child: Column(
@@ -93,7 +96,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                                             .colorScheme
                                             .onSurface,
                                       ),
-                                      SizedBox(height: 8),
+                                      const SizedBox(height: 8),
                                       Text(
                                         '${apiResponse!['image_counts'].values.fold(0, (sum, count) => sum + count)}',
                                         style: TextStyle(
@@ -122,9 +125,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
                                       Icons.circle,
                                       color: _getColorForLabel(entry.key),
                                     ),
-                                    SizedBox(width: 5),
+                                    const SizedBox(width: 5),
                                     Text(entry.key.toUpperCase()),
-                                    SizedBox(width: 5),
+                                    const SizedBox(width: 5),
                                     Text(entry.value.toString()),
                                   ],
                                 ),
@@ -166,7 +169,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                                             .colorScheme
                                             .onSurface,
                                       ),
-                                      SizedBox(height: 8),
+                                      const SizedBox(height: 8),
                                       Text(
                                         '${apiResponse!['video_counts'].values.fold(0, (sum, count) => sum + count)}',
                                         style: TextStyle(
@@ -195,9 +198,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
                                       Icons.circle,
                                       color: _getColorForLabel(entry.key),
                                     ),
-                                    SizedBox(width: 5),
+                                    const SizedBox(width: 5),
                                     Text(entry.key.toUpperCase()),
-                                    SizedBox(width: 5),
+                                    const SizedBox(width: 5),
                                     Text(entry.value.toString()),
                                   ],
                                 ),
@@ -213,16 +216,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
                     Row(
                       children: [
-                        SizedBox(width: 20),
-                        Icon(Icons.donut_small_outlined),
-                        SizedBox(width: 10),
+                        const SizedBox(width: 20),
+                        const Icon(Icons.storage_outlined),
+                        const SizedBox(width: 10),
                         LinearPercentIndicator(
                           trailing: Padding(
-                            padding: EdgeInsets.only(left: 10),
+                            padding: const EdgeInsets.only(left: 10),
                             child: Text(
                                 "${apiResponse['used_storage']} / ${apiResponse['total_storage']} GB"),
                           ),
-                          width: 300,
+                          width: 200,
                           lineHeight: 17.0,
                           percent: apiResponse['used_storage'] /
                               apiResponse['total_storage'],
@@ -233,7 +236,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                           progressColor: Theme.of(context).colorScheme.primary,
                           animation: true,
                           animationDuration: 1000,
-                          barRadius: Radius.circular(10),
+                          barRadius: const Radius.circular(10),
                           center: Text(
                             "${(apiResponse['used_storage'] / apiResponse['total_storage'] * 100).toStringAsFixed(0)}%",
                             style: TextStyle(
@@ -243,193 +246,189 @@ class _StatisticsPageState extends State<StatisticsPage> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 30),
+                    const SizedBox(height: 30),
                     if (apiResponse['top_locations'].length > 0)
-                      Container(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(left: 20),
-                              child: Text(
-                                "TOP PLACES",
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Montserrat',
-                                ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 20),
+                            child: Text(
+                              "TOP PLACES",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Montserrat',
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(10.0),
-                              child: Row(
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      for (var location
-                                          in apiResponse['top_locations'])
-                                        Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Container(
-                                            padding: EdgeInsets.all(5),
-                                            decoration: BoxDecoration(
-                                              color: Colors.transparent,
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: Colors.pink,
-                                                width: 2,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                    Icons.location_on_outlined),
-                                                SizedBox(width: 5),
-                                                Text(location),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  SizedBox(width: 10),
-                                  Spacer(),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: Row(
+                              children: [
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    for (var location
+                                        in apiResponse['top_locations'])
                                       Padding(
-                                        padding: const EdgeInsets.all(20.0),
-                                        child: LinearPercentIndicator(
-                                          trailing: Padding(
-                                            padding: EdgeInsets.only(left: 10),
-                                            child: Text(
-                                                apiResponse['used_storage']
-                                                    .toString()),
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.transparent,
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: Colors.pink,
+                                              width: 2,
+                                            ),
                                           ),
-                                          width: 100.0,
-                                          lineHeight: 17.0,
-                                          percent: apiResponse['used_storage'] /
-                                              apiResponse['total_storage'],
-                                          backgroundColor: Color(0xffefefef),
-                                          progressColor: Color(0xffb8e0ff),
-                                          animation: true,
-                                          animationDuration: 1000,
-                                          linearStrokeCap:
-                                              LinearStrokeCap.roundAll,
-                                          center: Text(
-                                            "${(apiResponse['used_storage'] / apiResponse['total_storage'] * 100).toStringAsFixed(0)}%",
-                                            style: TextStyle(
-                                                fontSize: 15,
-                                                color: Colors.black),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                  Icons.location_on_outlined),
+                                              const SizedBox(width: 5),
+                                              Text(location),
+                                            ],
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
+                                const SizedBox(width: 10),
+                                const Spacer(),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(20.0),
+                                      child: LinearPercentIndicator(
+                                        trailing: Padding(
+                                          padding: const EdgeInsets.only(left: 10),
+                                          child: Text(
+                                              apiResponse['used_storage']
+                                                  .toString()),
+                                        ),
+                                        width: 100.0,
+                                        lineHeight: 17.0,
+                                        percent: apiResponse['used_storage'] /
+                                            apiResponse['total_storage'],
+                                        backgroundColor: const Color(0xffefefef),
+                                        progressColor: const Color(0xffb8e0ff),
+                                        animation: true,
+                                        animationDuration: 1000,
+                                        barRadius: const Radius.circular(10),
+                                        center: Text(
+                                          "${(apiResponse['used_storage'] / apiResponse['total_storage'] * 100).toStringAsFixed(0)}%",
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     if (apiResponse['top_albums'].length > 0)
-                      Container(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(left: 20),
-                              child: Text(
-                                "TOP ALBUMS",
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Montserrat',
-                                ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 20),
+                            child: Text(
+                              "TOP ALBUMS",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Montserrat',
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(10.0),
-                              child: Row(
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      for (var album
-                                          in apiResponse['top_albums'])
-                                        Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Container(
-                                            padding: EdgeInsets.all(5),
-                                            decoration: BoxDecoration(
-                                              color: Colors.transparent,
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .tertiary,
-                                                width: 2,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                    Icons.photo_album_outlined),
-                                                SizedBox(width: 5),
-                                                Text(album[0]),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  SizedBox(width: 10),
-                                  Spacer(),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: Row(
+                              children: [
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    for (var album
+                                        in apiResponse['top_albums'])
                                       Padding(
-                                        padding: const EdgeInsets.all(20.0),
-                                        child: LinearPercentIndicator(
-                                          trailing: Padding(
-                                            padding: EdgeInsets.only(left: 10),
-                                            child: Text(
-                                                apiResponse['top_albums'][0][1]
-                                                    .toString()),
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.transparent,
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .tertiary,
+                                              width: 2,
+                                            ),
                                           ),
-                                          width: 100.0,
-                                          lineHeight: 17.0,
-                                          percent: apiResponse['top_albums'][0]
-                                                  [1] /
-                                              total,
-                                          backgroundColor: Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withOpacity(0.2),
-                                          progressColor: Theme.of(context)
-                                              .colorScheme
-                                              .tertiary,
-                                          animation: true,
-                                          animationDuration: 1000,
-                                          barRadius: Radius.circular(10),
-                                          center: Text(
-                                            "${(apiResponse['top_albums'][0][1] / total * 100).toStringAsFixed(0)}%",
-                                            style: TextStyle(fontSize: 15),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                  Icons.photo_album_outlined),
+                                              const SizedBox(width: 5),
+                                              Text(album[0]),
+                                            ],
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
+                                const SizedBox(width: 10),
+                                const Spacer(),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(20.0),
+                                      child: LinearPercentIndicator(
+                                        trailing: Padding(
+                                          padding: const EdgeInsets.only(left: 10),
+                                          child: Text(
+                                              apiResponse['top_albums'][0][1]
+                                                  .toString()),
+                                        ),
+                                        width: 100.0,
+                                        lineHeight: 17.0,
+                                        percent: apiResponse['top_albums'][0]
+                                                [1] /
+                                            total,
+                                        backgroundColor: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withOpacity(0.2),
+                                        progressColor: Theme.of(context)
+                                            .colorScheme
+                                            .tertiary,
+                                        animation: true,
+                                        animationDuration: 1000,
+                                        barRadius: const Radius.circular(10),
+                                        center: Text(
+                                          "${(apiResponse['top_albums'][0][1] / total * 100).toStringAsFixed(0)}%",
+                                          style: const TextStyle(fontSize: 15),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                   ],
                 ),
@@ -442,7 +441,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return assetCounts.entries.map((entry) {
       final label = entry.key;
       final value = (entry.value as num).toDouble();
-      final radius = 20.0;
+      const radius = 20.0;
 
       return PieChartSectionData(
         color: _getColorForLabel(label),
@@ -459,7 +458,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return assetCounts.entries.map((entry) {
       final label = entry.key;
       final value = (entry.value as num).toDouble();
-      final radius = 20.0;
+      const radius = 20.0;
 
       return PieChartSectionData(
         color: _getColorForLabel(label),
@@ -474,35 +473,35 @@ class _StatisticsPageState extends State<StatisticsPage> {
 Color _getColorForLabel(String label) {
   switch (label) {
     case 'heic':
-      return Color(0xffffa4e1);
+      return const Color(0xffffa4e1);
     case 'jpeg':
-      return Color(0xff3bffc8);
+      return const Color(0xff3bffc8);
     case 'jpg':
-      return Color(0xffadd6f7);
+      return const Color(0xffadd6f7);
     case 'mp4':
-      return Color(0xfffebefb);
+      return const Color(0xfffebefb);
     case 'png':
-      return Color(0xffffff9f);
+      return const Color(0xffffff9f);
     case 'avif':
-      return Color(0xffffc0cb); // Light Pink
+      return const Color(0xffffc0cb); // Light Pink
     case 'ttif':
-      return Color(0xff7fffd4); // Aquamarine
+      return const Color(0xff7fffd4); // Aquamarine
     case 'webp':
-      return Color(0xff00ffff); // Cyan
+      return const Color(0xff00ffff); // Cyan
     case 'jfif':
-      return Color(0xffff6347); // Tomato
+      return const Color(0xffff6347); // Tomato
     case 'mov':
-      return Color(0xff20b2aa); // Light Sea Green
+      return const Color(0xff20b2aa); // Light Sea Green
     case 'avi':
-      return Color(0xff9370db); // Medium Purple
+      return const Color(0xff9370db); // Medium Purple
     case 'webm':
-      return Color(0xff2e8b57); // Sea Green
+      return const Color(0xff2e8b57); // Sea Green
     case 'flv':
-      return Color(0xff8a2be2); // Blue Violet
+      return const Color(0xff8a2be2); // Blue Violet
     case 'wmv':
-      return Color(0xff48d1cc); // Medium Turquoise
+      return const Color(0xff48d1cc); // Medium Turquoise
     case 'mkv':
-      return Color(0xffd8bfd8); // Thistle
+      return const Color(0xffd8bfd8); // Thistle
     default:
       throw Error();
   }
@@ -511,7 +510,7 @@ Color _getColorForLabel(String label) {
 class SimpleLineChart extends StatelessWidget {
   final Map<String, dynamic> apiResponse;
 
-  SimpleLineChart({required this.apiResponse});
+  const SimpleLineChart({super.key, required this.apiResponse});
 
   @override
   Widget build(BuildContext context) {
@@ -521,7 +520,7 @@ class SimpleLineChart extends StatelessWidget {
         yearlyCounts.map((entry) => entry[0] as String).toList();
 
     return Container(
-      padding: EdgeInsets.all(30.0),
+      padding: const EdgeInsets.all(30.0),
       child: SizedBox(
         width: MediaQuery.of(context).size.width,
         height: 200, // Set a fixed height for the chart
@@ -556,13 +555,13 @@ class SimpleLineChart extends StatelessWidget {
                 belowBarData: BarAreaData(
                   show: true,
                   colors: [
-                    const Color(0xff8664fe).withOpacity(0.7),
-                    const Color(0xff8664fe).withOpacity(0.4),
+                    Color.fromARGB(255, 149, 120, 255).withOpacity(0.7),
+                    const Color.fromARGB(255, 149, 120, 255).withOpacity(0.4),
                     // Colors.white.withOpacity(0.5),
                   ],
                   gradientColorStops: [0.8, 0.9],
-                  gradientFrom: Offset(0, 3),
-                  gradientTo: Offset(1, 0),
+                  gradientFrom: const Offset(0, 3),
+                  gradientTo: const Offset(1, 0),
                 ),
               ),
             ],
@@ -576,7 +575,7 @@ class SimpleLineChart extends StatelessWidget {
                   return '';
                 },
                 getTextStyles: (value) =>
-                    TextStyle(color: Colors.white), // Set text color to white
+                    const TextStyle(color: Colors.white), // Set text color to white
               ),
               bottomTitles: SideTitles(
                 showTitles: true,
@@ -588,7 +587,7 @@ class SimpleLineChart extends StatelessWidget {
                   return '';
                 },
                 getTextStyles: (value) =>
-                    TextStyle(color: Colors.white), // Set text color to white
+                    const TextStyle(color: Colors.white), // Set text color to white
               ),
             ),
             gridData: FlGridData(

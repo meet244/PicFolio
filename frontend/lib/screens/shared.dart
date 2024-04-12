@@ -1,7 +1,6 @@
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
-
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:photoz/globals.dart';
@@ -14,9 +13,10 @@ import '../functions/selectedImages.dart';
 class Shared extends StatefulWidget {
   // final Function(List<int>) onSelect;
 
-  Shared({Key? key}) : super(key: key);
+  const Shared({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _SharedState createState() => _SharedState();
 }
 
@@ -38,8 +38,8 @@ class _SharedState extends State<Shared> {
 
   Future<void> fetchData() async {
     final response = await http.post(
-        Uri.parse('${Globals.ip}:7251/api/list/shared/users'),
-        body: {'username': '${Globals.username}'});
+        Uri.parse('${Globals.ip}/api/list/shared/users'),
+        body: {'username': Globals.username});
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       // print(data);
@@ -57,13 +57,13 @@ class _SharedState extends State<Shared> {
   Future<void> fetchImages() async {
     var url = '';
     if (selectedIndex == 0) {
-      url = '${Globals.ip}:7251/api/list/shared/all';
+      url = '${Globals.ip}/api/list/shared/all';
     } else {
-      url = '${Globals.ip}:7251/api/list/shared';
+      url = '${Globals.ip}/api/list/shared';
     }
     final response = await http.post(
       Uri.parse(url),
-      body: {'username': '${Globals.username}', 'of_user': names[selectedIndex]},
+      body: {'username': Globals.username, 'of_user': names[selectedIndex]},
     );
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
@@ -84,7 +84,7 @@ class _SharedState extends State<Shared> {
         title: Row(
           children: [
             (allselected.isEmpty)
-                ? Text("PicFolio")
+                ? const Text("PicFolio")
                 : (allselected.length == 1)
                     ? Text("${allselected.length} item")
                     : Text(
@@ -99,7 +99,7 @@ class _SharedState extends State<Shared> {
                     allselected.clear();
                   });
                 },
-                icon: Icon(
+                icon: const Icon(
                   Icons.close,
                   size: 32.0,
                 ),
@@ -113,11 +113,11 @@ class _SharedState extends State<Shared> {
                 var ret = getimage(Globals.ip, context);
                 ret.then((value) {
                   if (value) {
-                    print('Image Uploaded');
+                    if (kDebugMode) print('Image Uploaded');
                   }
                 });
               },
-              icon: Icon(Icons.add_a_photo_outlined, size: 32.0),
+              icon: const Icon(Icons.add_a_photo_outlined, size: 32.0),
             ),
           if (allselected.isEmpty)
             IconButton(
@@ -130,12 +130,12 @@ class _SharedState extends State<Shared> {
                   ),
                 );
               },
-              icon: Icon(Icons.settings_outlined, size: 32.0),
+              icon: const Icon(Icons.settings_outlined, size: 32.0),
             ),
           if (allselected.isNotEmpty)
             IconButton(
               onPressed: () {
-                var ret = onDelete(Globals.ip, context, allselected);
+                var ret = onDelete(context, allselected);
                 ret.then((value) {
                   if (value) {
                     setState(() {
@@ -144,12 +144,12 @@ class _SharedState extends State<Shared> {
                   }
                 });
               },
-              icon: Icon(Icons.delete_outlined, size: 32.0),
+              icon: const Icon(Icons.delete_outlined, size: 32.0),
             ),
           if (allselected.isNotEmpty)
             IconButton(
               onPressed: () {
-                var ret = onSend(Globals.ip, context, allselected);
+                var ret = onSend(context, allselected);
                 ret.then((value) {
                   if (value) {
                     setState(() {
@@ -158,14 +158,14 @@ class _SharedState extends State<Shared> {
                   }
                 });
               },
-              icon: Icon(Icons.share_outlined, size: 32.0),
+              icon: const Icon(Icons.share_outlined, size: 32.0),
             ),
           if (allselected.isNotEmpty)
             PopupMenuButton(
               itemBuilder: (BuildContext context) {
                 return [
                   PopupMenuItem(
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.add_outlined, size: 32.0),
                         SizedBox(width: 8.0),
@@ -177,13 +177,13 @@ class _SharedState extends State<Shared> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => SelectAlbumsScreen(Globals.ip),
+                          builder: (context) => const SelectAlbumsScreen(),
                         ),
                       ).then((selectedAlbum) {
                         // Use the selectedAlbum value here
                         if (selectedAlbum != null) {
                           // Handle the selected album
-                          onAddToAlbum(Globals.ip, selectedAlbum, allselected)
+                          onAddToAlbum(selectedAlbum, allselected)
                               .then((value) {
                             if (value) {
                               setState(() {
@@ -196,7 +196,7 @@ class _SharedState extends State<Shared> {
                     },
                   ),
                   PopupMenuItem(
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.edit_calendar_outlined, size: 32.0),
                         SizedBox(width: 8.0),
@@ -205,11 +205,11 @@ class _SharedState extends State<Shared> {
                     ),
                     onTap: () {
                       // Handle copy option tap
-                      editDate(Globals.ip, context, allselected);
+                      editDate(context, allselected);
                     },
                   ),
                   PopupMenuItem(
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.group_off_outlined, size: 32.0),
                         SizedBox(width: 8.0),
@@ -218,12 +218,12 @@ class _SharedState extends State<Shared> {
                     ),
                     onTap: () {
                       // Handle move option tap
-                      unMoveToShared(Globals.ip, allselected);
+                      unMoveToShared(allselected);
                     },
                   ),
                 ];
               },
-              child: Padding(
+              child: const Padding(
                 padding: EdgeInsets.all(10.0),
                 child: Icon(
                   Icons.more_vert_outlined,
@@ -248,7 +248,7 @@ class _SharedState extends State<Shared> {
                       itemBuilder: (context, index) {
                         if (index == 0 || index == names.length + 1) {
                           // Render empty SizedBox for the gaps
-                          return SizedBox(width: 10);
+                          return const SizedBox(width: 10);
                         } else {
                           // Render the actual list items
                           final actualIndex = index - 1;

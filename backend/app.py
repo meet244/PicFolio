@@ -1923,8 +1923,8 @@ def stats():
 
 def start_this():
     # while True: #todo: remove this
-    threading.Thread(target=run_background_script, daemon=True).start()
-    print("Server started")
+    # threading.Thread(target=run_background_script, daemon=True).start()
+    # print("Server started")
     serve(app, host="0.0.0.0", port=7251)
     # app.run(host="0.0.0.0", port=7251, debug=False) # multiple bg threads here
     # app.run(port=7251, debug=False) # multiple bg threads here

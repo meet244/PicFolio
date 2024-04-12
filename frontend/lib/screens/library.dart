@@ -1,8 +1,6 @@
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
-
 import 'dart:convert';
-
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -18,9 +16,10 @@ import 'package:photoz/screens/settings.dart';
 
 class Library extends StatefulWidget {
 
-  const Library({Key? key}) : super(key: key);
+  const Library({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _LibraryState createState() => _LibraryState();
 }
 
@@ -35,7 +34,7 @@ class _LibraryState extends State<Library> {
 
   Future<void> fetchAlbums() async {
     final response = await http.post(
-      Uri.parse('${Globals.ip}:7251/api/list/albums'),
+      Uri.parse('${Globals.ip}/api/list/albums'),
       body: {'username': Globals.username},
     );
     if (response.statusCode == 200) {
@@ -52,7 +51,7 @@ class _LibraryState extends State<Library> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('PicFolio'),
+        title: const Text('PicFolio'),
         actions: <Widget>[
           IconButton(
             onPressed: () {
@@ -60,11 +59,11 @@ class _LibraryState extends State<Library> {
               var ret = getimage(Globals.ip, context);
               ret.then((value) {
                 if (value) {
-                  print('Image Uploaded');
+                  if (kDebugMode) print('Image Uploaded');
                 }
               });
             },
-            icon: Icon(Icons.add_a_photo_outlined, size: 32.0),
+            icon: const Icon(Icons.add_a_photo_outlined, size: 32.0),
           ),
           IconButton(
             onPressed: () {
@@ -76,7 +75,7 @@ class _LibraryState extends State<Library> {
                 ),
               );
             },
-            icon: Icon(Icons.settings_outlined, size: 32.0),
+            icon: const Icon(Icons.settings_outlined, size: 32.0),
           ),
         ],
       ),
@@ -127,7 +126,7 @@ class _LibraryState extends State<Library> {
                               context,
                               MaterialPageRoute(
                                   builder: (context) =>
-                                      Duplicates(ip: Globals.ip)),
+                                      const Duplicates()),
                             )
                           }),
                   TransparentIconButton(
@@ -263,7 +262,7 @@ class _LibraryState extends State<Library> {
                                       fit: BoxFit.cover,
                                       imageUrl: albums![i][2].toString().isEmpty
                                           ? 'https://cdn3d.iconscout.com/3d/premium/thumb/picture-3446957-2888175.png'
-                                          : '${Globals.ip}:7251/api/preview/${Globals.username}/${albums![i][2].toString()}',
+                                          : '${Globals.ip}/api/preview/${Globals.username}/${albums![i][2].toString()}',
                                     )),
                               );
                             },
@@ -332,11 +331,11 @@ class TransparentIconButton extends StatelessWidget {
   final VoidCallback onPressed; // Add onPressed callback
 
   const TransparentIconButton({
-    Key? key,
+    super.key,
     required this.icon,
     required this.text,
     required this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

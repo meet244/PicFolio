@@ -11,6 +11,10 @@ import json
 from waitress import serve
 from tkinter import filedialog
 
+# passing port via ngrok for https(for videos)
+https_url = "https://picfolio.vercel.app/download/app"
+
+
 server_thread = None
 
 config = None
@@ -33,15 +37,6 @@ def save_config():
 
 read_config()
 
-# def on_set_button_click():
-#     if server_thread is not None and server_thread.is_alive():
-#         print('Alert')
-#         print('Please server stop first')
-#         return
-#     global config
-#     config['path'] = entry.get()
-#     save_config()
-
 def on_open_button_click():
     if server_thread is not None and server_thread.is_alive():
         print('Alert')
@@ -62,7 +57,7 @@ def on_open_button_click():
         print("No folder selected")
 
 def on_stop_button_click():
-    global server_thread
+    global server_thread, image_label, tk_image
     if server_thread is not None and server_thread.is_alive():
         # server_thread.stop()
         thread_id = server_thread.ident
@@ -78,6 +73,17 @@ def on_stop_button_click():
         port_entry.delete(0, tk.END)
         port_entry.insert(0, "0000")
         port_entry.configure(state="disabled")
+
+        pil_image = Image.open('loo.png')
+        resized_image = pil_image.resize((145, 145))
+        much = 25
+        area = (much, much, pil_image.width - much, pil_image.height - much)
+        pil_image = pil_image.crop(area)
+        image_label.destroy()
+        resized_image = pil_image.resize((145,145))
+        tk_image = ImageTk.PhotoImage(resized_image)
+        image_label = tk.Label(root, image=tk_image)
+        image_label.place(x=70,y=150)
         toaster()
     print("Stop Photo Assistant button clicked")
 
@@ -102,7 +108,7 @@ def on_start_button_click():
         port_entry.delete(0, tk.END)
         port_entry.insert(0, "7251")
         port_entry.configure(state="disabled")
-        img = qrcode.make(f"https://picfolio.vercel.app/scan/http://{ip}")
+        img = qrcode.make(f"https://picfolio.vercel.app/scan/http://{ip}:7251")
         img.save("qr.png")
         pil_image = Image.open('qr.png')
         # crop 10 px from all edges
@@ -110,7 +116,7 @@ def on_start_button_click():
         area = (much, much, pil_image.width - much, pil_image.height - much)
         pil_image = pil_image.crop(area)
         image_label.destroy()
-        resized_image = pil_image.resize((int(pil_image.width / 2.5), int(pil_image.height / 2.5)))
+        resized_image = pil_image.resize((145,145))
         tk_image = ImageTk.PhotoImage(resized_image)
         image_label = tk.Label(root, image=tk_image)
         image_label.place(x=70,y=150)
@@ -181,12 +187,7 @@ entry.configure(state="disabled")
 
 start_button = ctk.CTkButton(root, text="Start Photo Assistant", width=150, height=2, command=start_stop,fg_color=("#FFB4A6","#AF2F1C"),hover_color=("#FFDAD4","#8D1605"),text_color=("black","white"))
 start_button.place(x=320,y=220)
-# stop_button = ctk.CTkButton(root, text="Stop Photo Assistant", width=150, height=2, command=on_stop_button_click)
-# stop_button.place(x=320,y=255)
-# new_user_button = ctk.CTkButton(root, text="Create New User...", width=150, height=1, command=on_new_user_button_click)
-# new_user_button.place(x=320,y=265)
-# import_button = ctk.CTkButton(root, text="Import...", width=150, height=1, command=on_import_button_click)
-# import_button.place(x=320,y=297)
+
 server_label = ctk.CTkLabel(root, text="Server Address:")
 server_label.place(x=320, y=340)
 server_entry_var = ctk.StringVar()
@@ -203,9 +204,55 @@ port_entry.configure(state="disabled")
 port_entry.place(x=320, y=432)
 run_checkbox_var = ctk.IntVar()
 run_checkbox = ctk.CTkCheckBox(root, variable=run_checkbox_var, text="Run PicFolio Photo Assistant on start",font=("Bahnschrift",13),text_color=('black',"white"),fg_color=("#FFB4A6","#AF2F1C"),hover_color=("#FFDAD4","#8D1605"))
-run_checkbox.place(x=22, y=437)
+run_checkbox.place(x=22, y=470)
+https_checkbox_var = ctk.IntVar()
+# handle https checkbox
+def on_https_checkbox_click():
+    global https_url, image_label, tk_image
+    if https_checkbox_var.get() == 1:
+        # check if server is running
+        if server_thread is not None and server_thread.is_alive():
+            img = qrcode.make(f"https://picfolio.vercel.app/scan/{https_url}")
+            img.save("qr.png")
+            pil_image = Image.open('qr.png')
+            # crop 10 px from all edges
+            much = 25
+            area = (much, much, pil_image.width - much, pil_image.height - much)
+            pil_image = pil_image.crop(area)
+            image_label.destroy()
+            resized_image = pil_image.resize((145,145))
+            tk_image = ImageTk.PhotoImage(resized_image)
+            image_label = tk.Label(root, image=tk_image)
+            image_label.place(x=70,y=150)
+        else:
+            # show alert
+            print("Please start the server first")
+            https_checkbox_var.set(0)
+    else:
+        # check if server is running
+        if server_thread is not None and server_thread.is_alive():
+            ip = server_entry.get().replace("   .   ", ".")
+            img = qrcode.make(f"http://{ip}:7251")
+            img.save("qr.png")
+            pil_image = Image.open('qr.png')
+            # crop 10 px from all edges
+            much = 25
+            area = (much, much, pil_image.width - much, pil_image.height - much)
+            pil_image = pil_image.crop(area)
+            image_label.destroy()
+            resized_image = pil_image.resize((145,145))
+            tk_image = ImageTk.PhotoImage(resized_image)
+            image_label = tk.Label(root, image=tk_image)
+            image_label.place(x=70,y=150)
+        else:
+            # show alert
+            print("Please start the server first")
+            https_checkbox_var.set(0)
 
-debug_checkbox_var = ctk.IntVar()
+
+https_checkbox = ctk.CTkCheckBox(root,command=on_https_checkbox_click, variable=https_checkbox_var,  text="Use HTTPS (recommended for videos)",font=("Bahnschrift",13),text_color=('black',"white"),fg_color=("#FFB4A6","#AF2F1C"),hover_color=("#FFDAD4","#8D1605"))
+https_checkbox.place(x=22, y=430)
+
 download_label = ctk.CTkLabel(root, text="Please download PicFolio Mobile App.",font=("Bahnschrift",13),text_color=('black',"white"))
 download_label.place(x=30,y=340)
 service_label = ctk.CTkLabel(root, text="If the service can not be found automatically by",font=("Bahnschrift",13),text_color=('black',"white"))
@@ -214,6 +261,10 @@ qr_label = ctk.CTkLabel(root, text="PicFolio App, Please scan the QR code",font=
 qr_label.place(x=30,y=380)
 pil_image = Image.open('loo.png')
 resized_image = pil_image.resize((145, 145))
+much = 25
+area = (much, much, pil_image.width - much, pil_image.height - much)
+pil_image = pil_image.crop(area)
+resized_image = pil_image.resize((145,145))
 tk_image = ImageTk.PhotoImage(resized_image)
 image_label = tk.Label(root, image=tk_image)
 image_label.place(x=70,y=150)

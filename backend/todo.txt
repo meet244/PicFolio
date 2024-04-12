@@ -1,4 +1,0 @@
-# Functionalities
-
-- store in original quality #backend
-- Make preview image/vid smaller #backend

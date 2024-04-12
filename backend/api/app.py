@@ -167,6 +167,11 @@ def get_assetface(asset):
 def scan(anything):
     return redirect("https://github.com/meet244/PicFolio", code=302)
 
+@app.route('/download/app', methods=['GET'])
+@app.route('/dowload/app/<string:anything>', methods=['GET'])
+def scan(anything):
+    return redirect("https://github.com/meet244/PicFolio", code=302)
+
 if __name__ == '__main__':
     # read_config()
     # threading.Thread(target=background_tasks, daemon=True).start()

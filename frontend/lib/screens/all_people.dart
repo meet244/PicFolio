@@ -1,13 +1,13 @@
-// ignore_for_file: prefer_const_constructors
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:photoz/globals.dart';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:photoz/screens/user.dart';
 
+// ignore: must_be_immutable
 class AllPeople extends StatefulWidget {
   String ip;
   List<dynamic> removeFaceIds = [];
@@ -19,10 +19,10 @@ class AllPeople extends StatefulWidget {
       this.removeFaceIds = const [],
       this.isAdd = true,
       this.title = "",
-      Key? key})
-      : super(key: key);
+      super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _MyAppState createState() => _MyAppState();
 }
 
@@ -34,7 +34,7 @@ class _MyAppState extends State<AllPeople> {
   @override
   void initState() {
     super.initState();
-      fetchFaces();
+    fetchFaces();
   }
 
   Future<void> fetchFaces() async {
@@ -47,15 +47,20 @@ class _MyAppState extends State<AllPeople> {
     }
     try {
       final response = await http.post(
-        Uri.parse('${Globals.ip}:7251/api/list/faces'),
-        body: {'username': Globals.username, },
+        Uri.parse('${Globals.ip}/api/list/faces'),
+        body: {
+          'username': Globals.username,
+        },
       );
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
         // remove faces
-        print(
-            data); //  == [[15, Harshil], [13, Meet], [168, Heer], [14, Tirth], [156, Meet Shah], [161, Unknown], [101, Mayank], [107, Ananya], [8, Mohit], [96, Karan], [403, Maitri], [225, Vian], [196, Shiva], [88, Nikunj], [400, Ssruvi], [167, Unknown], [392, Ayman], [401, Shravani], [414, Tirth], [419, Unknown], [76, Unknown], [354, Unknown], [357, Unknown], [365, Unknown], [366, Unknown], [383, Unknown], [384, Unknown], [364, Unknown], [394, Unknown], [421, Unknown], [422, Unknown]]
-        print(widget.removeFaceIds); // == [[421, Unknown]]
+        if (kDebugMode) {
+          print(data);
+          print(widget.removeFaceIds);
+        }
+        // print(data); //  == [[15, Harshil], [13, Meet], [168, Heer], [14, Tirth], [156, Meet Shah], [161, Unknown], [101, Mayank], [107, Ananya], [8, Mohit], [96, Karan], [403, Maitri], [225, Vian], [196, Shiva], [88, Nikunj], [400, Ssruvi], [167, Unknown], [392, Ayman], [401, Shravani], [414, Tirth], [419, Unknown], [76, Unknown], [354, Unknown], [357, Unknown], [365, Unknown], [366, Unknown], [383, Unknown], [384, Unknown], [364, Unknown], [394, Unknown], [421, Unknown], [422, Unknown]]
+        // print(widget.removeFaceIds); // == [[421, Unknown]]
         if (widget.title != "") {
           if (widget.isAdd) {
             for (var faceId in widget.removeFaceIds) {
@@ -63,7 +68,7 @@ class _MyAppState extends State<AllPeople> {
             }
           }
         }
-        print(data);
+        if (kDebugMode) print(data);
         // for (var faceId in widget.removeFaceIds) {
         //   data.removeWhere((face) => face[0] == faceId);
         // }
@@ -75,14 +80,14 @@ class _MyAppState extends State<AllPeople> {
         _isSearching = false;
       });
     } catch (e) {
-      print('Error: $e');
+      if (kDebugMode) print('Error: $e');
     }
   }
 
   // api to rename face
   Future<void> renameFace(String name, int userId) async {
     final response = await http.get(Uri.parse(
-        '${Globals.ip}:7251/api/face/rename/${Globals.username}/${userId}/${name}'));
+        '${Globals.ip}/api/face/rename/${Globals.username}/$userId/$name'));
     if (response.statusCode == 200) {
       setState(() {
         // rename from var
@@ -100,8 +105,7 @@ class _MyAppState extends State<AllPeople> {
   // api to remove name
   Future<void> removeName(List<String> names) async {
     String namesString = names.join(',');
-    final response = await http.post(
-        Uri.parse('${Globals.ip}:7251/api/face/noname'),
+    final response = await http.post(Uri.parse('${Globals.ip}/api/face/noname'),
         body: {'username': Globals.username, 'name': namesString});
     if (response.statusCode == 200) {
       setState(() {
@@ -125,8 +129,8 @@ class _MyAppState extends State<AllPeople> {
 
   Future<void> mergeFaces(String mainface, String sideface) async {
     // String namesString = names.join(',');
-    final response = await http
-        .post(Uri.parse('${Globals.ip}:7251/api/face/join'), body: {
+    final response =
+        await http.post(Uri.parse('${Globals.ip}/api/face/join'), body: {
       'username': Globals.username,
       'main_face_id1': mainface,
       'side_face_id2': sideface
@@ -161,7 +165,7 @@ class _MyAppState extends State<AllPeople> {
               ),
         leading: _selectedImages.isNotEmpty
             ? IconButton(
-                icon: Icon(Icons.clear),
+                icon: const Icon(Icons.clear),
                 onPressed: () {
                   setState(() {
                     _selectedImages.clear();
@@ -169,7 +173,7 @@ class _MyAppState extends State<AllPeople> {
                 },
               )
             : IconButton(
-                icon: Icon(Icons.arrow_back),
+                icon: const Icon(Icons.arrow_back),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
@@ -214,7 +218,7 @@ class _MyAppState extends State<AllPeople> {
                           return AlertDialog(
                             title: const Text('Rename Face'),
                             content: TextField(
-                              decoration: InputDecoration(
+                              decoration: const InputDecoration(
                                 hintText: 'Enter new name',
                               ),
                               onChanged: (value) {
@@ -276,7 +280,11 @@ class _MyAppState extends State<AllPeople> {
               ]
             : null,
       ),
-      body: (Globals.username == '')?Center(child: CircularProgressIndicator(),):_buildBody(),
+      body: (Globals.username == '')
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : _buildBody(),
     );
   }
 
@@ -314,7 +322,6 @@ class _MyAppState extends State<AllPeople> {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => UserProfileScreen(
-                        Globals.ip,
                         faceNames[index][0].toString(),
                       ),
                     ),
@@ -325,7 +332,7 @@ class _MyAppState extends State<AllPeople> {
                 children: [
                   CachedNetworkImage(
                     imageUrl:
-                        "${Globals.ip}:7251/api/face/image/${Globals.username}/${faceNames[index][0]}",
+                        "${Globals.ip}/api/face/image/${Globals.username}/${faceNames[index][0]}",
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
@@ -361,7 +368,7 @@ class _MyAppState extends State<AllPeople> {
                     Positioned.fill(
                       child: Container(
                         color: Colors.black.withOpacity(0.5),
-                        child: Icon(
+                        child: const Icon(
                           Icons.check_circle,
                           color: Colors.white,
                           size: 40,
