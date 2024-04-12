@@ -169,7 +169,7 @@ def scan(anything):
 
 @app.route('/download/app', methods=['GET'])
 @app.route('/dowload/app/<string:anything>', methods=['GET'])
-def scan(anything):
+def download_app(anything):
     return redirect("https://github.com/meet244/PicFolio", code=302)
 
 if __name__ == '__main__':
