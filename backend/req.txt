@@ -1,7 +1,7 @@
 Flask==2.2.2
 pillow==10.2.0
-deepface==0.0.84
-numpy==1.26.2
+deepface==0.0.85
+numpy==1.23.5
 requests==2.31.0
 gradio-client==0.7.0
 matplotlib==3.8.2
@@ -18,3 +18,4 @@ Werkzeug==2.2.2
 Flask-Cors==4.0.0
 nltk==3.8.1
 geopy==2.4.1
+tensorflow==2.12
