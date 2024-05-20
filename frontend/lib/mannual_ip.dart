@@ -102,13 +102,13 @@ class _IpAddressInputPageState extends State<IpAddressInputPage> {
             padding: const EdgeInsets.all(20.0),
             child: TextField(
               controller: ipController,
-              keyboardType: TextInputType.number,
+              keyboardType: TextInputType.text,
               decoration: const InputDecoration(
                 hintText: 'Enter IP Address',
                 labelText: 'IP Address',
               ),
               textAlign: TextAlign.center,
-              autofocus: true, // Automatically opens the keyboard
+              autofocus: true, 
               onSubmitted: (value) {
                 final ipAddress = ipController.text;
                 Globals.ip = ipAddress;

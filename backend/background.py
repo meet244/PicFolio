@@ -18,7 +18,7 @@ def read_config():
     global config
     with open('config.json') as f:
         config = json.load(f)
-    print("Config loaded")
+    # print("Config loaded")
 
 # Establish a connection to the database
 
@@ -79,7 +79,7 @@ while True:
             background_funs.trainModel(f"{config['path']}/{u}/data/training")
             dones.append(u)
 
-        print(f"Working on {u}")
+        # print(f"Working on {u}")
         open_db(u)
         if not os.path.exists(f"{config['path']}/{u}/temp"):
             os.makedirs(f"{config['path']}/{u}/temp")
@@ -268,6 +268,7 @@ while True:
                     
                 # add faces to database
                 unk = False
+                print(faces)
                 for p in faces:
                     face_id = p['id']
                     if(len(str(p['id'])) >= 32):
@@ -337,10 +338,11 @@ while True:
 
                         cursor.execute("Insert into asset_faces(asset_id, face_id, x, y, w, h) values(?,?,?,?,?,?)",(int(image_id),int(face_id),int(p['face'][0]),int(p['face'][1]),int(p['face'][2]),int(p['face'][3])))
                         connection.commit()
-                
-                if (unk):
-                    background_funs.trainModel(f"{config['path']}/{u}/data/training")
-
+                    
+                    else:
+                        cursor.execute("Insert into asset_faces(asset_id, face_id, x, y, w, h) values(?,?,?,?,?,?)",(int(image_id),int(face_id),int(p['face'][0]),int(p['face'][1]),int(p['face'][2]),int(p['face'][3])))
+                        connection.commit()
+                        
                 # add blur to database
                 cursor.execute("UPDATE assets SET blurry = ? WHERE id = ?", (blurry, image_id))
                 connection.commit()
@@ -356,6 +358,8 @@ while True:
                 # save the image with preview
                 background_funs.saveImage(f"{config['path']}/{u}/temp/"+asset, image_id, asset.rsplit(".")[-1], compress, f"{config['path']}/{u}/master", f"{config['path']}/{u}/preview", date_time.year, date_time.month, date_time.day)
 
+                if (unk):
+                    background_funs.trainModel(f"{config['path']}/{u}/data/training")
 
             else:
                 # date_time = None

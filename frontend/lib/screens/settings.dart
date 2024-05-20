@@ -113,6 +113,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         trailing: TextButton(
                           onPressed: () {
                             // go to Scanner Page
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SplashScreen(noip: true),
+                              ),
+                            );
                           },
                           child: const Text("Change"),
                         ),

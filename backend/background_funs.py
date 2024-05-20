@@ -142,8 +142,9 @@ def recogniseFaces(image_path, username, configPath, isVideo = False) -> bool:
         for index, row in df.iterrows():
             #check if id is already in people list
             dist = 0.0
+            print(row['identity'])
             if index == 0:
-                p['id'] = row["identity"].split("\\")[-1].split("/")[0]
+                p['id'] = row["identity"].split("\\")[1].split("/")[0]
                 p['face'] = [row['source_x'],row['source_y'],row['source_w'],row['source_h']]
                 try:
                     dist = row['Facenet512_cosine']
@@ -151,7 +152,7 @@ def recogniseFaces(image_path, username, configPath, isVideo = False) -> bool:
                     dist = row['distance']
                 p['cosine'] = dist
             elif p['cosine'] > dist:
-                        p['id'] = row["identity"].split("\\")[-1].split("/")[0]
+                        p['id'] = row["identity"].split("\\")[1].split("/")[0]
                         p['face'] = [row['source_x'],row['source_y'],row['source_w'],row['source_h']]
                         p['cosine'] = dist
         people.append(p)
@@ -171,7 +172,7 @@ def recogniseFaces(image_path, username, configPath, isVideo = False) -> bool:
             if(face['confidence'] < 0.997):continue
             if(list(face['facial_area'].values()) not in [i['face'] for i in people]):
                 people.append({'id':str(uuid.uuid4().hex),'face':list(face['facial_area'].values()),'cosine':0.0})
-    print(people)
+    print("people = ", people)
     return people, unknownPeople and len(people) > 0
 
     # Save the faces in sqlite
