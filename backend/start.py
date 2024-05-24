@@ -109,8 +109,8 @@ def on_start_button_click():
         port_entry.insert(0, "7251")
         port_entry.configure(state="disabled")
         img = qrcode.make(f"https://picfolio.vercel.app/scan/http://{ip}:7251")
-        img.save("qr.png")
-        pil_image = Image.open('qr.png')
+        img.save("backend/qr.png")
+        pil_image = Image.open('backend/qr.png')
         # crop 10 px from all edges
         much = 25
         area = (much, much, pil_image.width - much, pil_image.height - much)

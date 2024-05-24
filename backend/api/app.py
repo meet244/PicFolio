@@ -163,14 +163,15 @@ def get_assetface(asset):
     return jsonify([
         {"faceid":1, "x":10,"y":10,"w":100,"h":100},{"faceid":2, "x":200,"y":200,"w":100,"h":100},{"faceid":3, "x":300,"y":300,"w":100,"h":100}])   
 
-@app.route('/scan/<string:anything>', methods=['GET'])
-def scan(anything):
-    return redirect("https://github.com/meet244/PicFolio", code=302)
-
+# API to download the app
 @app.route('/download/app', methods=['GET'])
 @app.route('/dowload/app/<string:anything>', methods=['GET'])
+def download(anything):
+    return redirect("https://github.com/meet244/PicFolio/releases", code=302)
+
+@app.route('/scan/<string:anything>', methods=['GET'])
 def scan(anything):
-    return redirect("https://github.com/meet244/PicFolio", code=302)
+    return redirect("https://github.com/meet244/PicFolio/releases", code=302)
 
 if __name__ == '__main__':
     # read_config()
