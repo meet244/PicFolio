@@ -32,7 +32,7 @@ genai.configure(api_key=os.getenv('Gemini'))
 model = genai.GenerativeModel('gemini-pro')
 
 tags = None
-with open("ram_tag_list.txt", "r") as file:
+with open("backend/ram_tag_list.txt", "r") as file:
     tags = file.read()
 
 config = None
@@ -61,11 +61,12 @@ def open_dbs(username):
     global config, conn, cursor
 
     if not os.path.exists(f'{config["path"]}/{username}/data.db'):
-        os.system(f'python dbmake.py {username}')
+        os.system(f'python backend/dbmake.py {username}')
     conn = sqlite3.connect(f'{config["path"]}/{username}/data.db', check_same_thread=False)
     cursor = conn.cursor()
 
-open_dbs(users[0])
+if users != []:
+    open_dbs(users[0])
 
 app = Flask(__name__)
 flask_cors.CORS(app)
@@ -1930,7 +1931,7 @@ def start_this():
     # app.run(port=7251, debug=False) # multiple bg threads here
 
 def run_background_script():
-        os.system('python background.py')
+        os.system('python backend/background.py')
 
 # if __name__ == '__main__':    # remove if karan is running
 #     start_this()

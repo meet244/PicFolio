@@ -98,7 +98,7 @@ cursor.execute('''CREATE TABLE album_assets
             FOREIGN KEY (asset_id) REFERENCES assets(id))''')
 
 
-with open("ram_tag_list.txt", "r") as file:
+with open("backend/ram_tag_list.txt", "r") as file:
     # Perform operations on the file
     # For example, read the contents of the file
     file_contents = file.readlines()

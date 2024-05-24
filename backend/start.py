@@ -74,7 +74,7 @@ def on_stop_button_click():
         port_entry.insert(0, "0000")
         port_entry.configure(state="disabled")
 
-        pil_image = Image.open('loo.png')
+        pil_image = Image.open('backend/loo.png')
         resized_image = pil_image.resize((145, 145))
         much = 25
         area = (much, much, pil_image.width - much, pil_image.height - much)
@@ -163,13 +163,13 @@ def show_toast():
 
 
 ctk.set_appearance_mode("System")  # Modes: system (default), light, dark
-ctk.set_default_color_theme("dark-red.json")  # Themes: blue (default), dark-blue, green
+ctk.set_default_color_theme("backend/dark-red.json")  # Themes: blue (default), dark-blue, green
 
 
 root = ctk.CTk()
 root.title("PicFolio Photo Assistant")
 root.geometry("500x515")
-root.iconbitmap('icon/logo.ico')
+root.iconbitmap('backend/icon/logo.ico')
 root.resizable(False, False)
 
 
@@ -259,7 +259,7 @@ service_label = ctk.CTkLabel(root, text="If the service can not be found automat
 service_label.place(x=30,y=360)
 qr_label = ctk.CTkLabel(root, text="PicFolio App, Please scan the QR code",font=("Bahnschrift",13),text_color=('black',"white"))
 qr_label.place(x=30,y=380)
-pil_image = Image.open('loo.png')
+pil_image = Image.open('backend/loo.png')
 resized_image = pil_image.resize((145, 145))
 much = 25
 area = (much, much, pil_image.width - much, pil_image.height - much)
