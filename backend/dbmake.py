@@ -35,11 +35,10 @@ cursor.execute('''CREATE TABLE assets
             deleted DATE DEFAULT 0 NOT NULL, 
             compress INTEGER DEFAULT NULL,
             duration TEXT DEFAULT NULL,
+            ocr_text TEXT DEFAULT NULL,
             liked INTEGER DEFAULT NULL,
-            shared INTEGER DEFAULT NULL,
-            city TEXT DEFAULT NULL,
-            state TEXT DEFAULT NULL,
-            country TEXT DEFAULT NULL)''')
+            latitude REAL DEFAULT NULL,
+            longitude REAL DEFAULT NULL)''')
 
 # create tags table
 cursor.execute('''CREATE TABLE tags
@@ -61,13 +60,14 @@ cursor.execute('''CREATE TABLE faces
 
 # Create table asset_faces
 cursor.execute('''CREATE TABLE asset_faces
-            (asset_id INTEGER NOT NULL, 
-            face_id INTEGER NOT NULL, 
+            (asset_id INTEGER NOT NULL,
+            face_id INTEGER NOT NULL,
             x INTEGER,
             y INTEGER,
             w INTEGER,
             h INTEGER,
             verified INTEGER DEFAULT 0 NOT NULL,
+            PRIMARY KEY (asset_id, face_id),
             FOREIGN KEY (asset_id) REFERENCES assets(id),
             FOREIGN KEY (face_id) REFERENCES faces(id))''')
 
@@ -87,7 +87,8 @@ cursor.execute('''CREATE TABLE album
             cover INTEGER DEFAULT NULL,
             start DATE DEFAULT NULL,
             end DATE DEFAULT NULL,
-            location TEXT DEFAULT NULL)''')
+            latitude REAL DEFAULT NULL,
+            longitude REAL DEFAULT NULL)''')
 
 # Create table album_assets
 cursor.execute('''CREATE TABLE album_assets
@@ -97,7 +98,13 @@ cursor.execute('''CREATE TABLE album_assets
             FOREIGN KEY (album_id) REFERENCES album(id),
             FOREIGN KEY (asset_id) REFERENCES assets(id))''')
 
+# Create a virtual table using the fts5 engine
+cursor.execute('''CREATE VIRTUAL TABLE images_ocr_fts USING fts5(
+    image_id UNINDEXED,  -- Store the ID but don't index it for text search
+    ocr_text             -- The actual text content extracted from the image
+)''')
 
+print('Adding tags to database')
 with open("backend/ram_tag_list.txt", "r") as file:
     # Perform operations on the file
     # For example, read the contents of the file
@@ -106,17 +113,8 @@ with open("backend/ram_tag_list.txt", "r") as file:
         i = i.replace("\n","")
         cursor.execute("INSERT INTO tags (tag) VALUES (?)", (i,))
 
-# #TODO: remove this
-# cursor.execute("INSERT INTO faces (name) VALUES ('alia')")
-# cursor.execute("INSERT INTO faces (name) VALUES ('anushka')")
-# cursor.execute("INSERT INTO faces (name) VALUES ('disha')")
-# cursor.execute("INSERT INTO faces (name) VALUES ('karan')")
-# cursor.execute("INSERT INTO faces (name) VALUES ('kiara')")
-# cursor.execute("INSERT INTO faces (name) VALUES ('rakul')")
-# cursor.execute("INSERT INTO faces (name) VALUES ('sidharth')")
-# cursor.execute("INSERT INTO faces (name) VALUES ('varun')")
-
-
+# Commit the changes
+conn.commit()
 
 # Close the connection
 conn.close()

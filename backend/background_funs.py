@@ -21,10 +21,13 @@ import os
 import logging
 import subprocess
 import shutil
-from moviepy.editor import VideoFileClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 import cv2
 import imageio
 import os
+from inference_ram import process_image_with_ram
+import easyocr
+import torch
 
 
 # Training Face Recognition Model
@@ -75,12 +78,13 @@ def trainModel(path) -> None:
                         # remove the unprocessed image
                         os.remove(os.path.join(path,dir, file))
 
-    # Delete previous model
-    try:
-        os.remove(os.path.join(path,'representations_facenet512.pkl'))
-        # print("NOT REMOVING Pickle")
-    except:
-        pass
+    # Delete previous model - not needed (as lib auto handles new image detection)
+
+    # try:
+    #     os.remove(os.path.join(path,'representations_facenet512.pkl'))
+    #     # print("NOT REMOVING Pickle")
+    # except:
+    #     pass
 
     # Train the model
     try:
@@ -91,6 +95,7 @@ def trainModel(path) -> None:
             # detector_backend='retinaface',
             enforce_detection=False,
             # silent=True,
+            refresh_database=True,
         )
     except Exception as e:
         print(e)
@@ -123,7 +128,9 @@ def recogniseFaces(image_path, username, configPath, isVideo = False) -> bool:
             model_name = "Facenet512",
             enforce_detection=False,
             silent=True,
-            detector_backend='retinaface'   # use retina to detect images and save | use opencv(def) to train model from cropped ones efficiency almost similar
+            detector_backend='retinaface',   # use retina to detect images and save | use opencv(def) to train model from cropped ones efficiency almost similar
+            refresh_database=True,
+            threshold=0.5 # TODO: adjust based on testing
         )
     except Exception as e:
         print(e)
@@ -228,7 +235,6 @@ def recogniseFaces(image_path, username, configPath, isVideo = False) -> bool:
 
     #         # Crop the image at the center
     #         cropped_image = image[y1:y2, x1:x2]
-
     #         cv2.imwrite(path, cropped_image)
     #         # cv2.imshow("face", cropped_image)
     #         # cv2.waitKey(0)
@@ -238,8 +244,8 @@ def recogniseFaces(image_path, username, configPath, isVideo = False) -> bool:
     # return unknownPeople and len(people) > 0
 
 
-# Blur Detection
-def tagImage(image_path) -> None:
+# Tagging Image
+def tagImage(image_path) -> list:
     """
     Calls an API to predict the content of an image.
 
@@ -250,24 +256,12 @@ def tagImage(image_path) -> None:
     list: A list of predicted labels for the image.
     """
     try:
-        client = Client("https://xinyu1205-recognize-anything.hf.space/")
-        result = client.predict(image_path, fn_index=2)
-        result = result[0].split(" | ")
-        print(result)
-        return result
+        tags = process_image_with_ram(image_path)
+        print('Tags(in background_funs.py) - ', tags)
+        return tags
     except Exception as e:
         print(e)
         return []
-        # # get cursor
-        # cursor = connection.cursor()
-
-        # for r in result:
-        #     # search tag in tags table and if presen get index else add to table and get index
-        #     cursor.execute("Select id from tags where tag = ?",(r,))
-        #     tag_id = cursor.fetchone()[0]
-
-        #     # add to assets_tags table
-        #     cursor.execute("Insert into asset_tags values(?,?)",(image_id,tag_id))
 
 #CHECK
 # Blur Detection
@@ -437,7 +431,7 @@ def saveVideo(video_loc, name, format, compress, mainPath, previewPath, year, mo
         # Write the compressed video frames with audio
         print(t_file)
         compressed_video = VideoFileClip(t_file)
-        compressed_video = compressed_video.set_audio(audio_clip)
+        compressed_video = compressed_video.with_audio(audio_clip)
         compressed_video.write_videofile(os.path.join(mainPath, str(year), str(month), str(date), name) + "."+format, codec='libx264', audio_codec='aac')
 
         video_capture.release()
@@ -503,27 +497,10 @@ def convert_video_to_short(input_video_path, output_path, previewPath, year, mon
     # Calculate frames to keep for the first 10 seconds
     frames_to_keep = int(fps * 10)
 
-    # Create VideoWriter object for trimmed video
-    trimmed_video_writer = cv2.VideoWriter(output_path, cv2.VideoWriter.fourcc(*'mp4v'), fps, (new_width, new_height))
-
-    # Read and write frames for the first 10 seconds
-    for i in range(frames_to_keep):
-        ret, frame = resized_cap.read()
-        if not ret:
-            break
-        trimmed_video_writer.write(frame)
-
-    # # Release VideoWriter object for the trimmed video
-    trimmed_video_writer.release()
-
-    # # Release VideoCapture object for the resized video
-    resized_cap.release()
-
     # Create GIF from trimmed video using OpenCV
     gif_frames = []
-    trimmed_cap = cv2.VideoCapture(output_path)
-    for _ in range(frames_to_keep):
-        ret, frame = trimmed_cap.read()
+    for i in range(frames_to_keep):
+        ret, frame = resized_cap.read()
         if not ret:
             break
         # Convert BGR to RGB
@@ -531,14 +508,39 @@ def convert_video_to_short(input_video_path, output_path, previewPath, year, mon
         gif_frames.append(frame_rgb)
 
     # Save GIF using imageio with infinite loop
-    imageio.mimsave(output_path, gif_frames, fps=fps, loop=0)
-
-    # Release VideoCapture object for the trimmed video
-    trimmed_cap.release()
+    imageio.mimsave(output_path.replace('.mp4', '.gif'), gif_frames, fps=fps, loop=0)
+    
+    # # Release VideoCapture object for the resized video
+    resized_cap.release()
 
     # Clean up temporary files
-    cv2.destroyAllWindows()
+    try:
+        cv2.destroyAllWindows()
+    except:
+        pass
 
     os.remove(os.path.join(previewPath, str(year), str(month), str(date), 'resized_video.mp4'))
     # os.remove(os.path.join(previewPath, str(year), str(month), str(date), 'trimmed_video.mp4'))
 
+ocr_reader = None
+
+def extract_text(image_path) -> str:
+    """
+    Extracts text from an image using OCR.
+
+    Parameters:
+    image_path (str): The path to the image file.
+
+    Returns:
+    str: The extracted text from the image.
+    """
+    global ocr_reader
+    if ocr_reader is None:
+        ocr_reader = easyocr.Reader(['en', 'hi'], gpu=True if torch.cuda.is_available() else False)
+
+    try:
+        result = ocr_reader.readtext(image_path, detail=0)
+        return "\n".join(result)
+    except Exception as e:
+        print(f"Error extracting text from {image_path}: {e}")
+        return None
