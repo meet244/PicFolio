@@ -69,22 +69,14 @@
 
 ## Tech Stack
 
-  
 
-| Layer | Technology |
-
-|---|---|
-
-| Backend | Python, Flask, SQLite, Waitress |
-
-| AI / ML | RAM (Recognize Anything Model), DeepFace, Gemini Pro, SentenceTransformers |
-
-| Frontend | Next.js 15, React 19, Tailwind CSS |
-
-| Maps | Leaflet / React Leaflet |
-
-| Media | Pillow, MoviePy, OpenCV |
-
+| Layer        | Technology |
+|--------------|------------|
+| **Backend**  | Python, Flask, SQLite, Waitress |
+| **AI / ML**  | RAM (Recognize Anything Model), DeepFace, Gemini Pro, SentenceTransformers |
+| **Frontend** | Next.js 15, React 19, Tailwind CSS |
+| **Maps**     | Leaflet, React Leaflet |
+| **Media**    | Pillow, MoviePy, OpenCV |
   
 
 ---
