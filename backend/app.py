@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, send_file, render_template
+from flask_caching import Cache
 # import flask_cors
 import json
 import sqlite3
@@ -8,7 +9,8 @@ import os
 import uuid
 import flask_cors
 from PIL import Image, ExifTags
-# import background_funs
+import cv2
+import background_funs
 from waitress import serve
 import time
 from datetime import datetime, timedelta
@@ -17,12 +19,19 @@ import threading
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
-from moviepy.editor import VideoFileClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 import gemini
 import nltk
 from nltk.corpus import wordnet as wn
-from geopy.geocoders import Nominatim
 import shutil
+import subprocess
+import ctypes
+import user_store
+from rapidfuzz import process, fuzz
+import pickle
+import re
+from sentence_transformers import SentenceTransformer, util
+import torch
 
 nltk.download('wordnet')
 load_dotenv()
@@ -35,34 +44,136 @@ tags = None
 with open("backend/ram_tag_list.txt", "r") as file:
     tags = file.read()
 
-config = None
+config = None  # for storing the config
+config_mtime = None  # for checking if the config file has been modified
+
 
 def read_config():
-    global config
+    global config, config_mtime
     if os.path.exists('config.json'):
         with open('config.json') as f:
             config = json.load(f)
     else:
-        config = {"users": ["family"], "path": ""}
+        config = {"path": ""}
         save_config()
+
+    config.setdefault('path', "")
+    try:
+        config_mtime = os.path.getmtime('config.json')
+    except FileNotFoundError:
+        config_mtime = None
     print("Config loaded")
+
+
 def save_config():
-    global config
+    global config, config_mtime
     with open('config.json', 'w') as f:
-        json.dump(config, f)
+        json.dump({"path": config.get("path", "")}, f)
+    try:
+        config_mtime = os.path.getmtime('config.json')
+    except FileNotFoundError:
+        config_mtime = None
     print("Config saved")
 
+
+def ensure_storage_path():
+    global config_mtime
+    try:
+        current_mtime = os.path.getmtime('config.json')
+    except FileNotFoundError:
+        current_mtime = None
+
+    if current_mtime != config_mtime:
+        read_config()
+
+    return bool(config.get('path'))
+
+
+def _to_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError, ZeroDivisionError):
+        if hasattr(value, 'numerator') and hasattr(value, 'denominator'):
+            return float(value.numerator) / float(value.denominator)
+        return None
+
+
+def _dms_to_decimal(coords):
+    if coords is None:
+        return None
+    if isinstance(coords, (list, tuple)):
+        parts = [_to_float(part) for part in coords]
+        if not parts:
+            return None
+        while len(parts) < 3:
+            parts.append(0.0)
+        degrees, minutes, seconds = parts[:3]
+        if None in (degrees, minutes, seconds):
+            return None
+        return degrees + minutes / 60 + seconds / 3600
+    return _to_float(coords)
+
+
+def _apply_ref(value, ref):
+    if value is None or not ref:
+        return value
+    ref = ref.upper()
+    if ref in ('S', 'W'):
+        return -abs(value)
+    return abs(value)
+
+
+def refresh_user_cache():
+    """
+    Refresh in-memory user list from the persistent store.
+    """
+    global users
+    if not ensure_storage_path():
+        users = []
+        return
+    try:
+        users = user_store.list_users(config['path'])
+    except Exception as exc:
+        print(f"Unable to refresh user cache: {exc}")
+        users = []
+
+
+def add_user_record(username, password):
+    if not ensure_storage_path():
+        raise ValueError("Storage path is not configured.")
+    user_store.add_user(config['path'], username, password)
+    refresh_user_cache()
+
+
+def remove_user_record(username):
+    if not ensure_storage_path():
+        raise ValueError("Storage path is not configured.")
+    user_store.remove_user(config['path'], username)
+    refresh_user_cache()
+
+
+def get_user_password(username):
+    if not ensure_storage_path():
+        return None
+    return user_store.get_user_password(config['path'], username)
+
 read_config()
-users = config['users']
+users = []
 conn = None
 cursor = None
+background_process = None
+
+refresh_user_cache()
 
 def open_dbs(username):
     global config, conn, cursor
 
+    if not ensure_storage_path():
+        raise ValueError("Storage path is not configured.")
+
     if not os.path.exists(f'{config["path"]}/{username}/data.db'):
         os.system(f'python backend/dbmake.py {username}')
-    conn = sqlite3.connect(f'{config["path"]}/{username}/data.db', check_same_thread=False)
+    conn = sqlite3.connect(f'{config["path"]}/{username}/data.db', check_same_thread=False, timeout=30)
     cursor = conn.cursor()
 
 if users != []:
@@ -70,6 +181,21 @@ if users != []:
 
 app = Flask(__name__)
 flask_cors.CORS(app)
+
+# Configure Cache
+cache = Cache(app, config={
+    'CACHE_TYPE': 'FileSystemCache',
+    'CACHE_DIR': 'backend/.flask_cache',
+    'CACHE_DEFAULT_TIMEOUT': 300
+})
+
+def make_cache_key(*args, **kwargs):
+    # Create a key based on the request path and form data (for POST requests)
+    key = request.path
+    if request.method == 'POST':
+        for k in sorted(request.form.keys()):
+            key += str(k) + str(request.form[k])
+    return key
 
 # # Error handler for 404 Not Found
 # @app.errorhandler(404)
@@ -104,38 +230,30 @@ def create_user():
     if username in users:
         return jsonify('User already exists')
     
-    users.append(username)
-    config['users'] = users
-    config['passwords'].append(password)
-    save_config()
+    try:
+        add_user_record(username, password)
+    except Exception as exc:
+        print(f"Failed to add user {username}: {exc}")
+        return jsonify('Unable to create user'), 500
 
+    cache.clear()
     return jsonify('true')
 
-# Rename user
-@app.route('/api/user/rename/<string:username>/<string:new_username>', methods=['POST'])
-def rename_user(username, new_username):
-    # Logic to rename user
-    if username not in users:
-        return jsonify({'error': 'User not found'}), 404
-    elif new_username in users:
-        return jsonify({'error': 'User already exists'}), 400
-    else:
-        users.remove(username)
-        users.append(new_username)
-        config['users'] = users
-        save_config()
-        os.rename(f'{username}', f'{new_username}')
-        return jsonify({'message': 'User renamed successfully'})
 
+
+# Sign in user
 @app.route('/api/user/auth', methods=['POST'])
 def auth_user():
     # Logic to authenticate user
     try:
         username = request.form['username']
-        if username not in users:
-            return jsonify('User not found')
     except:
         return jsonify('User not found')
+    
+    if username not in users:
+        refresh_user_cache()
+        if username not in users:
+            return jsonify('User not found')
     
     try:
         password = request.form['password']
@@ -145,11 +263,47 @@ def auth_user():
     if username == None or password == None:
         return jsonify('User not found')
     
-    ind = users.index(username)
-    if config['passwords'][ind] != password:
+    stored_password = get_user_password(username)
+    if stored_password is None or stored_password != password:
         return jsonify('Incorrect password')
     
     return jsonify('true')
+
+# Fetch users
+@app.route('/api/users', methods=['GET'])
+@cache.cached(timeout=60)
+def get_users():
+    # Logic to get users
+    refresh_user_cache()
+    return jsonify(users)
+
+# Delete user
+@app.route('/api/user/delete/<string:username>', methods=['DELETE'])
+def delete_user(username):
+    # Logic to delete user
+    if username not in users:
+        return jsonify({'error': 'User not found'}), 404
+
+
+    # stop the background script
+    stop_background_script()
+
+    # remove the database and the user folder
+    shutil.rmtree(f'{config["path"]}/{username}', ignore_errors=True)
+
+    # remove from persistent store
+    try:
+        remove_user_record(username)
+    except Exception as exc:
+        print(f"Failed to remove user {username} from store: {exc}")
+
+    # restart background script
+    run_background_script()
+
+    cache.clear()
+    return jsonify({'message': 'User deleted successfully'})
+
+
 
 
 
@@ -194,6 +348,8 @@ def upload():
 
         longitude = None
         latitude = None
+        latitude_ref = None
+        longitude_ref = None
 
         date_time = datetime.now()
         if asset.filename.split(".")[-1].lower() in ['png', 'jpg', 'jpeg', 'webp']:
@@ -214,23 +370,33 @@ def upload():
                     date_time = datetime.strptime(data, '%Y:%m:%d %H:%M:%S')
                     print(f"Date and Time: {date_time}")
                 elif tag == 'GPSLatitude':
-                    latitude = data
+                    latitude = _dms_to_decimal(data)
+                elif tag == 'GPSLatitudeRef':
+                    latitude_ref = data
                 elif tag == 'GPSLongitude':
-                    longitude = data
+                    longitude = _dms_to_decimal(data)
+                elif tag == 'GPSLongitudeRef':
+                    longitude_ref = data
 
             
             img.close()
         else:
             vid = VideoFileClip(f'{config["path"]}/{username}/temp/'+str(id)+"."+asset.filename.split(".")[-1].lower())
-            if vid.reader.infos['creation_time'] != None:
-                date_time = datetime.strptime(vid.reader.infos['creation_time'], '%Y-%m-%d %H:%M:%S')
+            if 'creation_time' in vid.reader.infos and vid.reader.infos['creation_time'] is not None:
+                try:
+                    date_time = datetime.strptime(vid.reader.infos['creation_time'], '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    # Try parsing with timezone if present or different format
+                    try:
+                        date_time = datetime.strptime(vid.reader.infos['creation_time'], '%Y-%m-%dT%H:%M:%S.%fZ')
+                    except:
+                        pass
 
             duration = vid.duration
             hours = int(duration // 3600)
             minutes = int((duration % 3600) // 60)
             seconds = int(duration % 60)
             seconds = str(seconds).zfill(2)
-            file = file[:-4]
             if hours != 0:
                 duration = f"{hours}:{minutes}:{seconds}"
             else:
@@ -239,23 +405,24 @@ def upload():
             cursor.execute("UPDATE assets SET duration = ? WHERE id = ?", (duration, id,))
 
             # get lat and long from exif data of the video
-            if vid.reader.infos['gps_latitude'] != None:
-                latitude = vid.reader.infos['gps_latitude']
-            if vid.reader.infos['gps_longitude'] != None:
-                longitude = vid.reader.infos['gps_longitude']
+            if 'gps_latitude' in vid.reader.infos and vid.reader.infos['gps_latitude'] is not None:
+                latitude = _to_float(vid.reader.infos['gps_latitude'])
+            if 'gps_longitude' in vid.reader.infos and vid.reader.infos['gps_longitude'] is not None:
+                longitude = _to_float(vid.reader.infos['gps_longitude'])
 
             vid.close()
 
-        if latitude != None and longitude != None:
-            geolocator = Nominatim(user_agent="geoapiExercises")
-            location = geolocator.reverse(f"{latitude}, {longitude}")
-            print(location)
-            cursor.execute("UPDATE assets SET city = ?, state = ?, country = ? WHERE id = ?", (location.raw['address']['city'], location.raw['address']['state'], location.raw['address']['country'], id,))
+        latitude = _apply_ref(latitude, latitude_ref)
+        longitude = _apply_ref(longitude, longitude_ref)
+
+        if latitude is not None and longitude is not None:
+            cursor.execute("UPDATE assets SET latitude = ?, longitude = ? WHERE id = ?", (latitude, longitude, id,))
 
         # update the date and time in the database
         cursor.execute("UPDATE assets SET created = ? WHERE id = ?", (date_time, id,))
         conn.commit()
                 
+        cache.clear()
         return jsonify({'message': 'Uploaded successfully'})
     else:
         return jsonify({'error': 'Invalid file type'}), 400
@@ -307,6 +474,7 @@ def delete_photo(username, ids):
             else:fail.append(i)
 
     conn.commit()
+    cache.clear()
     return jsonify({"success":success, "failed":fail})
 
 # restore a photo
@@ -335,6 +503,7 @@ def restore_photo():
         if cursor.rowcount != 0:success.append(i)
         else:fail.append(i)
     conn.commit()
+    cache.clear()
     return jsonify({"success":success, "failed":fail})
 
 # get a photo/video preview
@@ -364,40 +533,25 @@ def preview_asset2(username,photo_id):
 
     open_dbs(username)
 
-    done = False
-    tries = 10
-    while not done and tries > 0:
-        try:
-            cursor.execute("SELECT created FROM assets WHERE id = ?", (photo_id,))
-            # check if the photo exists
-            # if cursor.rowcount == 0:
-            #     return jsonify('Photo not found'), 404
+    cursor.execute("SELECT created,format FROM assets WHERE id = ?", (photo_id,))
 
-            date_time = cursor.fetchone()[0]
-            if date_time == None:
-                return jsonify('Photo not found'), 404
-            done = True
-        except Exception:
-            # print(e)
-            print("Recursive cursor usage")
-            tries-=1
-            time.sleep(0.2)
-            continue
+    date_time, format = cursor.fetchone()
+
+    if date_time is None:
+        return jsonify('Photo not found'), 404
 
     # convert date_time to datetime object
-    if date_time == None : return jsonify("Date Note Found"), 400
     try:
         date_time = datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f')
     except:
         date_time = datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S')
 
-    try:
+    # if video, return gif
+    if format == "mp4":
+        return send_file(f'{config["path"]}/{username}/preview/'+str(date_time.year)+'/'+str(date_time.month)+'/'+str(date_time.day)+'/'+str(photo_id)+'.gif', mimetype=f'image/gif',)
+    else:
         return send_file(f'{config["path"]}/{username}/preview/'+str(date_time.year)+'/'+str(date_time.month)+'/'+str(date_time.day)+'/'+str(photo_id)+'.webp', mimetype=f'image/webp')
-    except:
-        try:
-            return send_file(f'{config["path"]}/{username}/preview/'+str(date_time.year)+'/'+str(date_time.month)+'/'+str(date_time.day)+'/'+str(photo_id)+'.gif', mimetype=f'image/gif',)
-        except:
-            return jsonify('Preview not found'), 404
+
 
 # get a photo/video original
 @app.route('/api/asset/<string:username>/<int:photo_id>/<int:yyyy>/<int:mm>/<int:dd>', methods=['GET'])
@@ -442,26 +596,11 @@ def get_asset2(username,photo_id):
 
     open_dbs(username)
     
-    done = False
-    tries = 10
-    while not done and tries > 0:
-        try:
-            cursor.execute("SELECT created FROM assets WHERE id = ?", (photo_id,))
-
-            # check if the photo exists
-            # if cursor.rowcount == 0:
-            #     return jsonify('Photo not found'), 404
-
-            date_time = cursor.fetchone()[0]
-            if date_time == None:
-                return jsonify('Photo not found'), 404
-            done = True
-        except Exception:
-            # print(e)
-            print("Recursive cursor usage")
-            tries-=1
-            time.sleep(0.2)
-            continue
+    cursor.execute("SELECT created,format FROM assets WHERE id = ?", (photo_id,))
+    
+    date_time, format = cursor.fetchone()
+    if date_time is None:
+        return jsonify('Photo not found'), 404
 
     try:
         date_time = datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f')
@@ -474,6 +613,7 @@ def get_asset2(username,photo_id):
 
 # get a list of photos/videos
 @app.route('/api/list/general', methods=['POST'])
+@cache.cached(key_prefix=make_cache_key)
 def get_list():
     # Logic to get the list of photos/videos from the database or storage
     username = ""
@@ -518,6 +658,7 @@ def get_list():
 
 # list of only image ids
 @app.route('/api/list/<string:username>', methods=['GET'])
+@cache.cached()
 def get_list_user(username):
     # Logic to get the list of photos/videos from the database or storage
     if username not in users:
@@ -535,6 +676,7 @@ def get_list_user(username):
 
 # get asset details
 @app.route('/api/details/<string:username>/<int:photo_id>', methods=['GET'])
+@cache.cached()
 def get_details(username, photo_id):
     # Logic to get the photo/video from the database or storage
 
@@ -543,14 +685,19 @@ def get_details(username, photo_id):
     
     open_dbs(username)
 
-    cursor.execute("SELECT tags.tag FROM asset_tags INNER JOIN tags ON asset_tags.tag_id = tags.id WHERE asset_tags.asset_id = ?", (photo_id,))
-    tags = [tag[0] for tag in cursor.fetchall()]
+    # Fetch tags with error handling
+    try:
+        cursor.execute("SELECT tags.tag FROM asset_tags INNER JOIN tags ON asset_tags.tag_id = tags.id WHERE asset_tags.asset_id = ?", (photo_id,))
+        tags = [tag[0] for tag in cursor.fetchall()]
+    except Exception as e:
+        app.logger.error(f"Error fetching tags for asset {photo_id}: {str(e)}")
+        tags = []  # Default to empty list if tags query fails
 
-    cursor.execute("SELECT name,created,format,compress FROM assets WHERE id = ?", (photo_id,))
+    cursor.execute("SELECT name,created,format,compress,ocr_text,latitude,longitude FROM assets WHERE id = ?", (photo_id,))
     # check if the photo exists
     if cursor.rowcount == 0:
         return jsonify('Photo not found'), 404
-    name, created, format, compress = cursor.fetchone()
+    name, created, format, compress, ocr_text, latitude, longitude = cursor.fetchone()
     # convert date_time to datetime object
     try:
         created = datetime.strptime(created, '%Y-%m-%d %H:%M:%S.%f')
@@ -594,7 +741,8 @@ def get_details(username, photo_id):
         "height":str(height), 
         "size":size,
         "faces":all_face,
-        "location":None
+        "location": {"latitude": latitude, "longitude": longitude} if latitude is not None and longitude is not None else None,
+        "ocr_text":ocr_text
         })
 
 # change date of assets     
@@ -656,10 +804,45 @@ def redate():
         except:
             pass
 
+    cache.clear()
     return jsonify('Date changed successfully')
+
+# change location of assets
+@app.route('/api/location', methods=['POST'])
+def change_location():
+    # Logic to change the location of the assets
+    username = ""
+    try:
+        username = request.form['username']
+    except:
+        return jsonify('username not found'),404
+    try:
+        asset_ids = request.form['asset_id'].split(',')
+    except:
+        return jsonify('asset_ids not found'),404
+
+    try:
+        latitude = float(request.form['latitude'])
+        longitude = float(request.form['longitude'])
+    except KeyError:
+        return jsonify('latitude/longitude not found'),404
+    except ValueError:
+        return jsonify('Invalid coordinates'),400
+
+    if username not in users:
+        return jsonify('User not found'), 404
+
+    open_dbs(username)
+    for asset_id in asset_ids:
+        cursor.execute("UPDATE assets SET latitude = ?, longitude = ? WHERE id = ?", (latitude, longitude, asset_id))
+    conn.commit()
+    cache.clear()
+    return jsonify('Location changed successfully')
+
 
 # deleted assets API
 @app.route('/api/list/deleted', methods=['POST'])
+@cache.cached(key_prefix=make_cache_key)
 def get_deleted_list():
     # Logic to get the list of photos/videos from the database or storage
     username = ""
@@ -714,10 +897,12 @@ def like_unlike(username, asset_id):
     else:
         cursor.execute("UPDATE assets SET liked = NULL WHERE id = ?", (asset_id,))
     conn.commit()
+    cache.clear()
     return jsonify('Success')
 
 # is asset liked
 @app.route('/api/liked/<string:username>/<int:asset_id>', methods=['GET'])
+@cache.cached()
 def get_liked(username, asset_id):
     if username not in users:
         return jsonify('User not found'), 404
@@ -727,6 +912,7 @@ def get_liked(username, asset_id):
 
 # list of duplicate assets
 @app.route('/api/list/duplicate', methods=['POST'])
+@cache.cached(key_prefix=make_cache_key)
 def get_duplicates():
     # Logic to get the list of photos/videos from the database or storage
     username = ""
@@ -755,7 +941,25 @@ def get_duplicates():
 
     return jsonify(formatted_result)
 
+# count of current processing pending assets
+@app.route('/api/pending/<string:username>', methods=['GET'])
+@cache.cached(timeout=10)
+def get_pending_count(username):
+    # Logic to get the count of pending assets from the database or storage
 
+    if username not in users:
+        return jsonify('User not found'), 404
+
+    open_dbs(username)
+
+    cursor.execute("SELECT COUNT(*) FROM assets WHERE blurry IS NULL")
+    # check if the photo exists
+    if cursor.rowcount == 0:
+        return jsonify('Photo not found'), 404
+    result = cursor.fetchone()[0]
+
+    # return format {"pending": count}
+    return jsonify({"pending": result})
 
 
 
@@ -763,6 +967,7 @@ def get_duplicates():
 
 # get a list of faces
 @app.route('/api/list/faces', methods=['POST'])
+@cache.cached(key_prefix=make_cache_key)
 def get_list_faces():
     # Logic to get the list of faces from the database or storage
     username = ""
@@ -789,6 +994,7 @@ def get_list_faces():
 
 # get a list of photos/videos grouped by date for a particular face
 @app.route('/api/list/face/<string:username>/<int:face_id>', methods=['GET'])
+@cache.cached()
 def get_grouped_list_face(username, face_id):
     # Logic to get the list of photos/videos from the database or storage for a particular face
 
@@ -827,6 +1033,7 @@ def get_grouped_list_face(username, face_id):
 
 # Get a name of faces
 @app.route('/api/face/name/<string:username>/<int:face_id>', methods=['GET'])
+@cache.cached()
 def get_faces(username,face_id):
     # Logic to get the list of faces from the database or storage
     if username not in users:
@@ -872,12 +1079,13 @@ def get_faces_image(username, face_id):
 
 # Get a list of faces in a photo with coordinates
 @app.route('/api/assetface/<int:asset>', methods=['GET'])
+@cache.cached()
 def get_assetface(asset):
     # Logic to get the list of faces from the database or storage
 
     username = ""
     try:
-        username = request.form['username']
+        username = request.args.get('username', '')
     except:pass
     print(username)
     open_dbs(username)
@@ -922,11 +1130,30 @@ def join_faces():
         os.rename(f"{config['path']}/{username}/data/training/{side_face_id2}/{i}", f"{config['path']}/{username}/data/training/{main_face_id1}/{i}")
     os.rmdir(f"{config['path']}/{username}/data/training/{side_face_id2}")
     
+    # Remove rows that would violate the unique constraint before performing the update.
+    cursor.execute("""
+        DELETE FROM asset_faces
+        WHERE face_id = ?
+          AND EXISTS (
+              SELECT 1 FROM asset_faces af2
+              WHERE af2.asset_id = asset_faces.asset_id
+                AND af2.face_id = ?
+          )
+    """, (side_face_id2, main_face_id1))
+
+    # join faces
     cursor.execute("UPDATE asset_faces SET face_id = ? WHERE face_id = ?", (main_face_id1, side_face_id2))
 
-    # threading.Thread(target=background_funs.trainModel, args=(f"{config['path']}/{username}/data/training",), daemon=True).start()
+    # NOT needed as before face verification it auto-updates model
+
+    # # Update the trained model after joining faces
+    # t = threading.Thread(target=background_funs.trainModel, args=(f"{config['path']}/{username}/data/training",), daemon=True)
+    # t.start()
+    # t.join()
+
 
     conn.commit()
+    cache.clear()
     return jsonify("Faces joined successfully")
 
 # add face to a photo
@@ -949,8 +1176,14 @@ def add_face():
 
     open_dbs(username)
 
+    # Check if face already exists for this asset
+    cursor.execute("SELECT 1 FROM asset_faces WHERE asset_id=? AND face_id=?", (int(asset_id), int(face_id)))
+    if cursor.fetchone():
+        return jsonify("Face added successfully")
+
     cursor.execute("INSERT INTO asset_faces (asset_id,face_id) VALUES (?,?)", (int(asset_id), int(face_id),))
     conn.commit()
+    cache.clear()
     return jsonify("Face added successfully")
 
 # remove face from a photo
@@ -976,6 +1209,7 @@ def remove_face():
     for i in asset_id:
         cursor.execute("DELETE FROM asset_faces WHERE asset_id = ? AND face_id = ?", (int(i), int(face_id),))
     conn.commit()
+    cache.clear()
     return jsonify("Face removed successfully")
 
 # Replace faces
@@ -992,6 +1226,7 @@ def replace_faces(new_face_id, asset_id, x, y, w, h):
     if cursor.rowcount == 0:
         return jsonify('Face not found'), 404
     conn.commit()
+    cache.clear()
     return jsonify("Faces replaced successfully")
 
 # Rename faces
@@ -1007,9 +1242,10 @@ def rename_face(username, face_id, name):
     if cursor.rowcount == 0:
         return jsonify('Face not found'), 404
     conn.commit()
+    cache.clear()
     return jsonify("Face renamed successfully")
 
-# No of faces
+# No faces
 @app.route('/api/face/noname', methods=['POST'])
 def no_name_faces():
     # Logic to remove names from faces
@@ -1032,7 +1268,149 @@ def no_name_faces():
         cursor.execute("UPDATE faces SET name = ? WHERE id = ?", (uuid.uuid4().hex, int(i)))
     conn.commit()
 
+    cache.clear()
     return jsonify("Faces renamed successfully")
+
+# delete a face
+@app.route('/api/face/delete/<string:username>/<int:face_id>', methods=['DELETE'])
+def delete_face(username, face_id):
+
+    # Logic to delete a face    
+    if username not in users:
+        return jsonify('User not found'), 404
+
+    open_dbs(username)
+    face_path = f'{config["path"]}/{username}/data/face/{face_id}.webp'
+    training_dir = f'{config["path"]}/{username}/data/training/{face_id}'
+
+    if os.path.exists(face_path):
+        os.remove(face_path)
+
+    if os.path.isdir(training_dir):
+        shutil.rmtree(training_dir, ignore_errors=True)
+
+    # delete the face from the database
+    cursor.execute("DELETE FROM asset_faces WHERE face_id = ?", (face_id,))
+    cursor.execute("DELETE FROM faces WHERE id = ?", (face_id,))
+    conn.commit()
+    cache.clear()
+    return jsonify("Face deleted successfully")
+
+
+# -------------------- VERIFICATION APIS --------------------
+
+# Get pending verifications
+@app.route('/api/face/verify/pending/<string:username>', methods=['GET'])
+@cache.cached()
+def get_pending_verifications(username):
+    if username not in users:
+        return jsonify('User not found'), 404
+    
+    open_dbs(username)
+    
+    # Fetch faces with verified = 0 (Predicted)
+    query = """
+        SELECT af.asset_id, af.face_id, f.name, af.x, af.y, af.w, af.h, a.created
+        FROM asset_faces af
+        JOIN faces f ON af.face_id = f.id
+        JOIN assets a ON af.asset_id = a.id
+        WHERE af.verified = 0
+        LIMIT 50
+    """
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    
+    result = []
+    for row in rows:
+        result.append({
+            "asset_id": row[0],
+            "face_id": row[1],
+            "person_name": row[2],
+            "box": {"x": row[3], "y": row[4], "w": row[5], "h": row[6]},
+            "created": row[7]
+        })
+        
+    return jsonify(result)
+
+# Update verification status
+@app.route('/api/face/verify/update', methods=['POST'])
+def update_face_verification():
+    username = request.form.get('username')
+    asset_id = request.form.get('asset_id')
+    face_id = request.form.get('face_id')
+    status = request.form.get('status') # 'true' (verified) or 'false' (rejected)
+    
+    if not username or not asset_id or not face_id or status is None:
+        return jsonify("Missing parameters"), 400
+        
+    open_dbs(username)
+    
+    is_verified = str(status).lower() == 'true'
+    
+    if is_verified:
+        # 1. Update DB to verified = 1
+        cursor.execute("UPDATE asset_faces SET verified = 1 WHERE asset_id = ? AND face_id = ?", (asset_id, face_id))
+        conn.commit()
+        
+        # 2. Add to training data
+        cursor.execute("SELECT x, y, w, h FROM asset_faces WHERE asset_id = ? AND face_id = ?", (asset_id, face_id))
+        coords = cursor.fetchone()
+        
+        if coords:
+            x, y, w, h = coords
+            cursor.execute("SELECT created, format FROM assets WHERE id = ?", (asset_id,))
+            res = cursor.fetchone()
+            if res:
+                created, fmt = res
+                try:
+                    if isinstance(created, str):
+                        if '.' in created:
+                            dt = datetime.strptime(created, '%Y-%m-%d %H:%M:%S.%f')
+                        else:
+                            dt = datetime.strptime(created, '%Y-%m-%d %H:%M:%S')
+                    else:
+                        dt = created
+                except:
+                    dt = datetime.now()
+                
+                # Construct path to master image
+                image_path = f'{config["path"]}/{username}/master/{dt.year}/{dt.month}/{dt.day}/{asset_id}.png'
+                
+                if os.path.exists(image_path):
+                    img = cv2.imread(image_path)
+                    if img is not None:
+                        # Apply padding logic
+                        w_pad = round(w * 0.4)
+                        h_pad = round(h * 0.4)
+                        height, width, _ = img.shape
+                        
+                        x1 = max(x - w_pad, 0)
+                        y1 = max(y - h_pad, 0)
+                        x2 = min(x + w + w_pad, width)
+                        y2 = min(y + h + h_pad, height)
+                        
+                        cropped = img[y1:y2, x1:x2]
+                        
+                        # Save to training
+                        # Use a unique name: asset_id + face_id + x
+                        train_path = f"{config['path']}/{username}/data/training/{face_id}/{asset_id}_{face_id}_{x}.jpg"
+                        os.makedirs(os.path.dirname(train_path), exist_ok=True)
+                        cv2.imwrite(train_path, cropped)
+                        
+                        # Trigger retraining in background
+                        threading.Thread(target=background_funs.trainModel, args=(f"{config['path']}/{username}/data/training",)).start()
+        cache.clear()
+        return jsonify("Verified")
+    else:
+        # Update verified = -1 (Rejected)
+        cursor.execute("UPDATE asset_faces SET verified = -1 WHERE asset_id = ? AND face_id = ?", (asset_id, face_id))
+        conn.commit()
+        cache.clear()
+        return jsonify("Rejected")
+
+
+
+
 
 
 
@@ -1041,6 +1419,7 @@ def no_name_faces():
 
 # get a list of albums
 @app.route('/api/list/albums', methods=['POST'])
+@cache.cached(key_prefix=make_cache_key)
 def get_list_albums():
     # Logic to get the list of albums from the database or storage
 
@@ -1078,6 +1457,7 @@ def create_album():
 
     cursor.execute("INSERT INTO album (name) VALUES (?)", (name,))
     conn.commit()
+    cache.clear()
     return jsonify("Album created successfully")
 
 # add photos/videos to an album
@@ -1112,6 +1492,7 @@ def add_to_album():
         except:
             pass
     conn.commit()
+    cache.clear()
     return jsonify("Photos added to album successfully")
 
 # remove photos/videos from an album
@@ -1131,6 +1512,7 @@ def remove_from_album():
     for asset_id in asset_ids:
         cursor.execute("DELETE FROM album_assets WHERE album_id = ? AND asset_id = ?", (album_id, asset_id))
     conn.commit()
+    cache.clear()
     return jsonify("Photos removed from album successfully")
 
 # delete an album
@@ -1151,10 +1533,12 @@ def delete_album():
     cursor.execute("DELETE FROM album WHERE id = ?", (album_id,))
     cursor.execute("DELETE FROM album_assets WHERE album_id = ?", (album_id,))
     conn.commit()
+    cache.clear()
     return jsonify("Album deleted successfully")
 
 # get a list of photos/videos in an album
 @app.route('/api/album/<string:username>/<int:album_id>', methods=['GET'])
+@cache.cached()
 def get_album(username, album_id):
     # Logic to get the list of photos/videos from the database or storage for a particular album
     if username not in users:
@@ -1235,6 +1619,7 @@ def redate_album():
 
 # Get a list of auto albums
 @app.route('/api/list/autoalbums', methods=['POST'])
+@cache.cached(key_prefix=make_cache_key)
 def get_list_autoalbums():
     # Logic to get the list of auto albums from the database or storage
 
@@ -1452,158 +1837,6 @@ def get_autoalbum(username, auto_album_name:str):
 
 
 
-# --------------- FAMILY MOVE IN / OUT ---------------
-
-# add personal assets to shared
-@app.route('/api/shared/move', methods=['POST'])
-def add_to_shared():
-    # get date and format of image
-    username = ""
-    try:
-        username = request.form['username']
-    except:
-        return jsonify('username not found'),404
-    
-    try:
-        asset_id = request.form['asset_id'].split(',')
-    except:
-        return jsonify('Bad request'), 400
-    
-    open_dbs(username)
-    for i in asset_id:
-        cursor.execute("UPDATE assets SET shared = 1 WHERE id = ?", (i,))   
-    conn.commit()
-
-    return jsonify("Image added to shared successfully")
-
-# remove assets from shared
-@app.route('/api/shared/moveback', methods=['POST'])
-def moveback_to_personal():
-    # get date and format of image
-    username = ""
-    try:
-        username = request.form['username']
-    except:
-        return jsonify('username not found'),404
-    
-    try:
-        asset_id = request.form['asset_id'].split(',')
-    except:
-        return jsonify('Bad request'), 400
-    
-    open_dbs(username)
-    for i in asset_id:
-        cursor.execute("UPDATE assets SET shared = NULL WHERE id = ?", (i,))
-    conn.commit()
-
-    return jsonify("Image moved back to personal successfully")
-
-# load shared images from a user
-@app.route('/api/list/shared', methods=['POST'])
-def get_shared():
-    # Logic to get the list of photos/videos from the database or storage for a particular face
-    try:
-        username = request.form['username']
-        of_user = request.form['of_user']
-        if of_user not in users:
-            return jsonify('User not found'), 404
-        if username not in users:
-            return jsonify('User not found'), 404
-    except:
-        return jsonify('username not found'),404
-    
-    open_dbs(of_user)
-    cursor.execute("SELECT DATE(created), GROUP_CONCAT(id), GROUP_CONCAT(IFNULL(duration, '')) FROM assets WHERE shared = 1 AND deleted = 0 GROUP BY DATE(created) ORDER BY created DESC")
-
-    r = cursor.fetchall()
-    if r == None or len(r) == 0:
-        return jsonify([])
-    formatted_result = []
-    for row in r:
-        ids = []
-        row1 = row[1].split(',')
-        row2 = row[2].split(',')
-        for i in range(len(row1)):
-            if row2[i] != "":
-                id_int = [int(row1[i]),of_user,row2[i]]
-            else:
-                id_int = [int(row1[i]),of_user]
-            ids.append(id_int)
-        formatted_result.append([row[0], ids])
-    return jsonify(formatted_result)
-
-# get all shared images
-@app.route('/api/list/shared/all', methods=['POST'])
-def get_all_shared():
-    # Logic to get the list of photos/videos from shared
-    try:
-        username = request.form['username']
-        if username not in users:
-            return jsonify('User not found'), 404
-    except:
-        return jsonify('username not found'),404
-
-    all_shared = []
-
-    for u in users:
-        open_dbs(u)
-        cursor.execute("SELECT DATE(created), GROUP_CONCAT(id), GROUP_CONCAT(IFNULL(duration, '')) FROM assets WHERE shared = 1 AND deleted = 0 GROUP BY created")
-
-        r = cursor.fetchall()
-        if r == None or len(r) == 0:
-            continue
-        for row in r:
-            ids = []
-            row1 = row[1].split(',')
-            row2 = row[2].split(',')
-            for i in range(len(row1)):
-                if row2[i] != "":
-                    id_int = [int(row1[i]),u,row2[i]]
-                else:
-                    id_int = [int(row1[i]),u]
-                ids.append(id_int)
-            all_shared.append([row[0], ids])
-
-            # all_shared.append([row[0], [[int(id),u] for id in row[1].split(',')]])
-    print(all_shared)
-    
-    # Join same date images
-    joined_result = []
-    for i in range(len(all_shared)):
-        if i == 0:
-            joined_result.append(all_shared[i])
-        else:
-            if all_shared[i][0] == all_shared[i-1][0]:
-                joined_result[-1][1].extend(all_shared[i][1])
-            else:
-                joined_result.append(all_shared[i])
-    
-    joined_result.reverse()  
-
-    return jsonify(joined_result)
-
-# get list of shared users
-@app.route('/api/list/shared/users', methods=['POST'])
-def get_shared_users():
-    # Logic to get the list of shared users
-    # try:
-    #     username = request.form['username']
-    #     if username not in users:
-    #         return jsonify('User not found'), 404
-    # except:
-    #     return jsonify('username not found'),404
-
-    # shared_users = []
-
-    # for u in users:
-    #     open_dbs(u)
-    #     cursor.execute("SELECT COUNT(*) FROM assets WHERE shared = 1 AND deleted = 0 LIMIT 1")
-    #     if cursor.fetchone()[0] > 0:
-    #         shared_users.append(u)
-    return jsonify(users)
-
-
-
 
 # --------------- SEARCH APIS ---------------
 
@@ -1779,78 +2012,197 @@ def search():
     print("usernames", username)
     print("query", query)
 
-    print("AI search")
+    # perform local search  - if gemini api is not available
+
     faces = []
-    # faces = ['Meet']
-    tags = []  
-    # tags = ['food']
+    tags = []
+    ocr_assets = []
 
-    r = gemini.get_ai_names(query)
-    if r !=None:
-        faces = r
+    # check in config
+    if not config.get("gemini_api_key") or config.get("gemini_api_key") == "":
+        # local search
+        print("local search")
+        # local search logic here
+
+        # match faces (locally)
+        try:
+            # Fetch all name variations from DB
+            cursor.execute("SELECT id, name FROM faces")
+            rows = cursor.fetchall()
+
+            # Create lookup dictionary: {'mum': 2, 'meet': 1, ...}
+            # Filter out 32-char UUIDs which are likely 'Unknown' faces
+            alias_map = {row[1].lower(): row[0] for row in rows if len(row[1]) != 32}
+
+            if alias_map:
+                tokens = query.split()
+                found_ids = set()
+                matched_words = []
+                known_names = list(alias_map.keys())
+
+                for word in tokens:
+                    # Fuzzy match each word against known names
+                    match = process.extractOne(word, known_names, scorer=fuzz.ratio, score_cutoff=85)
+
+                    if match:
+                        matched_alias = match[0]
+                        person_id = alias_map[matched_alias]
+                        found_ids.add(person_id)
+                        matched_words.append(word)
+
+                # Update faces list with found IDs
+                faces = list(found_ids)
+                print("Matched face IDs:", faces)
+
+                # Remove identified names from the query string for further tag search
+                remaining_tokens = [t for t in tokens if t not in matched_words]
+                query = " ".join(remaining_tokens)
+        except Exception as e:
+            print(f"Error in local face matching: {e}")
+
+        # match tags (locally)
+        try:
+            with open('backend/tag_vector_space.pkl', 'rb') as f:
+                vector_data = pickle.load(f)
+            
+            known_tags = vector_data['tags']
+            tag_embeddings = vector_data['embeddings']
+            
+            # Initialize model
+            st_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+            found_tags = set()
+            
+            # A. Exact Match
+            for tag in known_tags:
+                if re.search(r'\b' + re.escape(tag.lower()) + r'\b', query):
+                    found_tags.add(tag)
+
+            # B. Semantic Search
+            query_embedding = st_model.encode(query, convert_to_tensor=True)
+
+            if isinstance(tag_embeddings, torch.Tensor):
+                tag_embeddings = tag_embeddings.to(query_embedding.device)
+            else:
+                tag_embeddings = torch.tensor(tag_embeddings).to(query_embedding.device)
+
+            cos_scores = util.cos_sim(query_embedding, tag_embeddings)[0]
+            
+            # Get top 5 matches with > 80% similarity
+            top_results = sorted(enumerate(cos_scores), key=lambda x: x[1], reverse=True)[:5]
+            for idx, score in top_results:
+                if score > 0.75:  # similarity threshold
+                    found_tags.add(known_tags[idx])
+            
+            tags = list(found_tags)
+            print("Matched tags:", tags)
+        except Exception as e:
+            print(f"Error in local tag matching: {e}")
     
-    if len(query.replace('and','').split(" ")) > 3+len(faces) or len(faces) == 0:
-        r = gemini.get_ai_tags(query)
-        if r !=None:
-            tags = r
-    
-    print(faces, tags)
+        # match OCR text (locally)
+        try:
+            if query.strip():
+                # Use FTS5 MATCH operator for fast full-text search
+                # We wrap the query in double quotes to treat it as a phrase search if needed, 
+                # or just pass it directly. For simple words, passing directly is fine.
+                # To be safe against syntax errors, we can use the standard binding.
+                cursor.execute("""
+                    SELECT f.image_id 
+                    FROM images_ocr_fts f
+                    JOIN assets a ON f.image_id = a.id
+                    WHERE f.ocr_text LIKE ? AND a.deleted = 0
+                """, (f"%{query}%",))
+                ocr_assets = [row[0] for row in cursor.fetchall()]
 
-    if len(faces) == 0 and len(tags) == 0:
-        print("nothing")
-        return jsonify([])
-    if len(faces) == 0:
-        print("search with tags")
-        # Get tag_ids from the tags list
-        tag_ids = cursor.execute("SELECT id FROM tags WHERE tag IN ({})".format(','.join('?' for _ in tags)), tags).fetchall()
-        tag_ids = [tag[0] for tag in tag_ids]
+                print("Matched OCR assets:", len(ocr_assets))
+        except Exception as e:
+            print(f"Error in local OCR matching: {e}")
 
-        # Retrieve asset_ids and created dates based on the tag_ids
-        cursor.execute("SELECT DATE(assets.created), GROUP_CONCAT(DISTINCT asset_tags.asset_id), GROUP_CONCAT(IFNULL(duration, '')) FROM asset_tags JOIN assets ON asset_tags.asset_id = assets.id WHERE asset_tags.tag_id IN ({}) GROUP BY DATE(assets.created) ORDER BY (assets.created) DESC".format(','.join('?' for _ in tag_ids)), tag_ids)
-        result = cursor.fetchall()
-    elif len(tags) == 0:
-        print("search with faces")
-
-        cursor.execute("SELECT id FROM faces WHERE LOWER(name) IN ({})".format(','.join(['?']*len(faces))), [f.lower() for f in faces])
-        face_ids = [row[0] for row in cursor.fetchall()]
-        print(face_ids)
-
-        # Retrieve asset_ids and created dates based on the face_ids
-        cursor.execute("SELECT DATE(assets.created), GROUP_CONCAT(DISTINCT assets.id), GROUP_CONCAT(IFNULL(assets.duration, '')) FROM asset_faces JOIN assets ON asset_faces.asset_id = assets.id WHERE asset_faces.face_id IN ({}) GROUP BY DATE(assets.created) HAVING COUNT(DISTINCT asset_faces.face_id) >= ? ORDER BY (assets.created) DESC".format(','.join(['?']*len(face_ids))), face_ids + [len(faces)])
-        result = cursor.fetchall()
-        print(result)
     else:
-        print("search with both tag and face")
-        # Get the IDs of the tags from the tags list
-        tag_ids = cursor.execute("SELECT id FROM tags WHERE tag IN ({})".format(','.join('?' for _ in tags)), tags).fetchall()
-        tag_ids = [tag[0] for tag in tag_ids]
+        print("gemini search")
+        # TODO: gemini search
 
-        face_ids = cursor.execute("SELECT id FROM faces WHERE LOWER(name) IN ({})".format(','.join('?' for _ in faces)), [f.lower() for f in faces]).fetchall()
-        face_ids = [face[0] for face in face_ids]
+    
+    # sql search query filtering with tags and faces
+    # it must have atleast 1 tag-matched and all faces(if any)
+    if not faces and not tags and not ocr_assets:
+        return jsonify([])
 
-        # Assuming tag_ids and face_ids are lists of tag IDs and face IDs respectively
-        tag_ids_str = ','.join('?' for _ in tag_ids)
-        face_ids_str = ','.join('?' for _ in face_ids)
+    result = []
 
-        # Retrieve asset_ids and created dates based on the tag_ids and face_ids
-        cursor.execute("SELECT DISTINCT DATE(assets.created), GROUP_CONCAT(DISTINCT assets.id), GROUP_CONCAT(IFNULL(duration, '')) FROM assets INNER JOIN asset_tags ON assets.id =  asset_tags.asset_id INNER JOIN asset_faces ON assets.id = asset_faces.asset_id WHERE asset_faces.face_id IN ({}) AND asset_tags.tag_id IN ({}) GROUP BY DATE(assets.created) HAVING COUNT(DISTINCT asset_faces.face_id) >= ?".format(face_ids_str, tag_ids_str), face_ids + tag_ids + [len(faces)])
-        result = cursor.fetchall()
+    # Collect all candidate asset IDs
+    tag_asset_ids = set()
+    if tags:
+        placeholders = ','.join('?' for _ in tags)
+        cursor.execute(f"SELECT id FROM tags WHERE tag IN ({placeholders})", tags)
+        tag_ids = [row[0] for row in cursor.fetchall()]
+        
+        if tag_ids:
+            t_ids_placeholders = ','.join('?' for _ in tag_ids)
+            cursor.execute(f"SELECT DISTINCT asset_id FROM asset_tags WHERE tag_id IN ({t_ids_placeholders})", tag_ids)
+            tag_asset_ids = set(row[0] for row in cursor.fetchall())
 
+    ocr_asset_ids = set(ocr_assets)
+    
+    # Union of Tags and OCR (Parallel Branch)
+    candidate_ids = tag_asset_ids | ocr_asset_ids
 
-    print(result)
+    # Face Filtering (Sequential Branch)
+    face_asset_ids = set()
+    if faces:
+        placeholders = ','.join('?' for _ in faces)
+        subquery = f"""
+            SELECT asset_id 
+            FROM asset_faces 
+            WHERE face_id IN ({placeholders}) 
+            GROUP BY asset_id 
+            HAVING COUNT(DISTINCT face_id) = ?
+        """
+        cursor.execute(subquery, faces + [len(faces)])
+        face_asset_ids = set(row[0] for row in cursor.fetchall())
+
+    # Combine Results
+    final_ids = set()
+    if faces:
+        if candidate_ids:
+            # Faces AND (Tags OR OCR)
+            final_ids = face_asset_ids & candidate_ids
+        else:
+            # Only Faces (if query was fully consumed by faces)
+            final_ids = face_asset_ids
+    else:
+        # No Faces -> Just Tags OR OCR
+        final_ids = candidate_ids
+
+    if not final_ids:
+        return jsonify([])
+
+    # Fetch details for final IDs
+    placeholders = ','.join('?' for _ in final_ids)
+    final_query = f"""
+        SELECT DATE(created), GROUP_CONCAT(id), GROUP_CONCAT(IFNULL(duration, ''))
+        FROM assets
+        WHERE id IN ({placeholders}) AND deleted = 0
+        GROUP BY DATE(created)
+        ORDER BY created DESC
+    """
+    cursor.execute(final_query, list(final_ids))
+    result = cursor.fetchall()
+
     formatted_result = []
     for row in result:
-        id_int = []
+        ids = []
         row1 = row[1].split(',')
         row2 = row[2].split(',')
         for i in range(len(row1)):
             if row2[i] != "":
-                id_int.append([int(row1[i]), row2[i]])
+                id_int = [int(row1[i]), None, row2[i]]
             else:
-                id_int.append([int(row1[i]),])
-        formatted_result.append([row[0], id_int])
+                id_int = [int(row1[i])]
+            ids.append(id_int)
+        formatted_result.append([row[0], ids])
+    
     return jsonify(formatted_result)
-
 
 
 
@@ -1890,16 +2242,18 @@ def stats():
     top_albums = cursor.fetchall()
 
     cursor.execute("""
-        SELECT location, COUNT(*) AS img_count
-        FROM album_assets
-        JOIN assets ON album_assets.asset_id = assets.id
-        JOIN album ON album_assets.album_id = album.id
-        WHERE location IS NOT NULL
-        GROUP BY location
+        SELECT latitude, longitude, COUNT(*) AS img_count
+        FROM assets
+        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        GROUP BY latitude, longitude
         ORDER BY img_count DESC
         LIMIT 3;
         """)
-    top_locations = cursor.fetchall()
+    location_rows = cursor.fetchall()
+    top_locations = [
+        {"latitude": row[0], "longitude": row[1], "count": row[2]}
+        for row in location_rows
+    ]
 
     # storage available on the server 
     # total storage available on the server
@@ -1924,14 +2278,44 @@ def stats():
 
 def start_this():
     # while True: #todo: remove this
-    threading.Thread(target=run_background_script, daemon=True).start()
-    # print("Server started")
-    serve(app, host="0.0.0.0", port=7251)
+    run_background_script()
+    print("Server started")
+    serve(app, host="0.0.0.0", port=7251, threads=1)
     # app.run(host="0.0.0.0", port=7251, debug=False) # multiple bg threads here
     # app.run(port=7251, debug=False) # multiple bg threads here
 
 def run_background_script():
-        os.system('python backend/background.py')
+    global background_process
+    try:
+        background_process = subprocess.Popen([sys.executable, 'backend/background.py'])
+        # Don't wait - let it run in the background
+    except Exception as e:
+        print(f"Background script error: {e}")
 
-# if __name__ == '__main__':    # remove if karan is running
-#     start_this()
+def stop_background_script():
+    global background_process
+    if background_process is not None:
+        try:
+            # Terminate the process
+            if os.name == 'nt':  # Windows
+                background_process.terminate()
+                # Give it a moment to terminate gracefully
+                try:
+                    background_process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    # Force kill if it doesn't terminate
+                    background_process.kill()
+            else:  # Unix-like
+                background_process.terminate()
+                try:
+                    background_process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    background_process.kill()
+            print("Background script stopped")
+        except Exception as e:
+            print(f"Error stopping background script: {e}")
+        finally:
+            background_process = None
+
+if __name__ == '__main__':    # remove if karan is running
+    start_this()

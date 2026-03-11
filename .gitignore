@@ -1,2 +1,9 @@
 
 backend/.env
+/Backend/.flask_cache
+/Backend/__pycache__
+/Backend/backend/.flask_cache
+/Backend/blur_detection/__pycache__
+/Backend/ram/__pycache__
+/Backend/ram/models/__pycache__
+Backend/ram_swin_large_14m.pth

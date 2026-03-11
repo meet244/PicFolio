@@ -1,69 +1,255 @@
-![Frame 5](https://github.com/meet244/PicFolio/assets/83262693/616cd93f-2544-41db-82ec-d0b2c2a35962)
 
-# PicFolio : Smart AI Photo Manager 📷✨
+# PicFolio 📷
 
-**PicFolio** is a software solution designed to streamline photo management across **desktop** and **mobile devices**. With its **client-server architecture**, users can **upload, organize, and share photos** seamlessly between their **PC** and **mobile phone**. PicFolio offers the convenience of **local storage**, providing users with **ample space** to store their memories without worrying about storage limitations.
+  ![Frame 5](https://github.com/meet244/PicFolio/assets/83262693/616cd93f-2544-41db-82ec-d0b2c2a35962)
 
-The app also includes **AI features**, allowing users to **automatically detect spaces within photos** and **group them accordingly**. Additionally, PicFolio utilizes **machine learning algorithms** to **tag photos for efficient organization**.
+**PicFolio** is a self-hosted, privacy-first photo management app — a local Google Photos alternative. It runs entirely on your own machine, giving you AI-powered photo organization, face grouping, smart search, duplicate detection, and a clean web UI, without paying for cloud storage or sharing your photos with anyone.
 
-## Screenshots 🖼️
+  
 
-- ### Desktop💻
+---
+
+  
+
+## Screenshots
+
+  - ### Desktop💻
 <img src="https://github.com/meet244/PicFolio/assets/83262693/c4d21236-8be9-4692-a13e-bd5845969456" width="400">
 
-- ### Mobile📱
-<img src="https://github.com/meet244/PicFolio/assets/83262693/917a3b7b-9bac-48b6-ab21-1394dd580a69" width="200">
-<img src="https://github.com/meet244/PicFolio/assets/83262693/835fe459-a793-47dc-a30a-3e57c775859b" width="200">
-<img src="https://github.com/meet244/PicFolio/assets/83262693/90aee256-4bbb-4031-a287-8627158f1b17" width="200">
-<img src="https://github.com/meet244/PicFolio/assets/83262693/d5779674-acf3-4b64-8ddf-608dae141fed" width="200">
-<img src="https://github.com/meet244/PicFolio/assets/83262693/afe5475b-2d59-4c6b-a2e6-ef87eb184c47" width="200">
-<img src="https://github.com/meet244/PicFolio/assets/83262693/35bcf745-d89d-437f-8591-01e7a975dc85" width="200">
-<img src="https://github.com/meet244/PicFolio/assets/83262693/08045eef-e917-4051-96f7-db67114e8527" width="200">
-<img src="https://github.com/meet244/PicFolio/assets/83262693/2b1e938e-78a0-4e38-8c13-9efc664d8ff4" width="200">
+- ### Web 🌐
 
+  
+
+---
+
+  
 
 ## Features
 
-### 1. Cross-Platform Compatibility📱💻
-- Install the application on your PC as the server and on your mobile device as the client.
-- Seamlessly synchronize photos between desktop and mobile. 
+  
 
-### 2. Advanced Photo Management 🔍📚
-- Utilize features similar to Google Photos, including face grouping and image tag detection.
-- Cluster photos into albums for easy organization. 
+-  **Multi-user support** — Separate photo libraries per user, each with their own login
 
-### 3. Shared Spaces 📤🔒
-- Create shared spaces where multiple users on the same device can access and contribute to shared photo albums.
-- Share photos via any sharing app, with photos always stored securely on the PC.
+-  **AI Auto-tagging** — Every photo is tagged automatically using the Recognize Anything Model (RAM)
 
-### 4. Resource Management 💾📱
-- Optimize storage resources by utilizing available space on the PC's hard disk or SSD.
-- No need to worry about running out of space on mobile devices.
+-  **Face Grouping** — Detects and clusters people across your library using DeepFace; name them for easy browsing
 
-### 5. Machine Learning Algorithms 🤖🏷️
-- Automatically detect spaces within photos and group them accordingly. 
-- Utilize machine learning algorithms to tag photos for efficient organization. 
+-  **Natural Language Search** — Search photos by description ("dog at beach") powered by Gemini Pro + semantic embeddings
 
-## Installation 📥
+-  **Auto Albums** — Photos grouped automatically by scene and content
 
-1.  **Desktop (Server) Installation:** 💻
-    - Download and install the Photo Manager App on your PC from.
-    - Follow the on-screen instructions to set up the server.
+-  **Places / GPS Map** — Browse photos by location using EXIF GPS data on an interactive map
 
-2.  **Mobile (Client) Installation:** 📱
-    - Download and install the Photo Manager App on your mobile device from [link].
-    - Connect the mobile app to the desktop server following the setup process.
+-  **Duplicate Detection** — Find and remove duplicate photos
 
-## Development Details 🛠️
+-  **Blur Detection** — Surface and clean up low-quality, blurry shots
 
-- The backend of this application is implemented in [Python](https://www.python.org/) using the [DeepFace](https://github.com/serengil/deepface) library for face recognition, [Gemini](https://deepmind.google/technologies/gemini/#introduction) API for searching across tags and a [Recognise Anything Model](https://recognize-anything.github.io/) model for image tagging.
-- The frontend is developed using [Flutter](https://flutter.dev/).
+-  **Favorites & Bin** — Like photos, delete to bin, restore anytime
 
-## Contributions 🤝
+-  **Upload** — Drag and drop upload from browser (works on mobile too)
 
-Contributions to the Photo Manager App are welcome! Whether it's bug fixes, feature enhancements, or documentation improvements, feel free to contribute by submitting a pull request. 
+-  **Statistics** — View storage usage and library stats
 
-## License📄
+-  **100% Local** — Nothing leaves your machine (except an optional Gemini API key for search)
 
-This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/meet244/PicFolio/blob/main/LICENSE) file for details.
+  
 
+---
+
+  
+
+## Tech Stack
+
+  
+
+| Layer | Technology |
+
+|---|---|
+
+| Backend | Python, Flask, SQLite, Waitress |
+
+| AI / ML | RAM (Recognize Anything Model), DeepFace, Gemini Pro, SentenceTransformers |
+
+| Frontend | Next.js 15, React 19, Tailwind CSS |
+
+| Maps | Leaflet / React Leaflet |
+
+| Media | Pillow, MoviePy, OpenCV |
+
+  
+
+---
+
+  
+
+## Installation
+
+  
+
+### Prerequisites
+
+  
+
+- Python 3.10+
+
+- Node.js 18+
+
+- A [Gemini API key](https://aistudio.google.com/app/apikey) (free, optional — only needed for AI search)
+
+  
+
+---
+
+  
+
+### Backend Setup
+
+  
+
+**1. Create and activate a virtual environment**
+
+  
+
+```bash
+
+# Windows
+
+python  -m  venv  venv
+
+venv\Scripts\activate
+
+  
+
+# macOS / Linux
+
+python  -m  venv  venv
+
+source  venv/bin/activate
+
+```
+
+  
+
+**2. Install Python dependencies**
+
+  
+
+```bash
+
+pip  install  -r  Backend/requirements.txt
+
+```
+
+  
+
+**3. Configure environment variables**
+
+  
+
+Create a `.env` file inside the `Backend/` folder:
+
+  
+
+```env
+
+Gemini=your_gemini_api_key_here
+
+```
+
+  
+
+**4. Run the backend**
+
+  
+
+```bash
+
+python  backend/start.py
+
+```
+
+  
+
+The backend server will start on `http://localhost:5000`.
+
+  
+
+---
+
+  
+
+### Frontend Setup
+
+  
+
+**1. Navigate to the frontend directory**
+
+  
+
+```bash
+
+cd  Frontend
+
+```
+
+  
+
+**2. Install dependencies**
+
+  
+
+```bash
+
+npm  i
+
+```
+
+  
+
+**3. Run the development server**
+
+  
+
+```bash
+
+npm  run  dev
+
+```
+
+  
+
+The frontend will be available at `http://localhost:3000`.
+
+  
+
+---
+
+  
+
+## First-Time Setup
+
+  
+
+1. Open `http://localhost:3000` in your browser
+
+2. Go to the **Setup** page and enter your backend server URL (`http://localhost:5000`)
+
+3. Create your first user
+
+4. Start uploading photos
+
+  
+
+---
+
+  
+
+## Contributions
+
+  
+
+Contributions are welcome! Whether it's bug fixes, feature enhancements, or documentation improvements, feel free to submit a pull request.
+
+  
+
+---

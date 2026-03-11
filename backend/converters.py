@@ -2,8 +2,7 @@
 # import pillow_avif 
 from PIL import Image, ExifTags
 import os
-from moviepy.editor import VideoFileClip
-from moviepy.editor import VideoFileClip
+from moviepy.video.io import VideoFileClip
 from  heic2png import HEIC2PNG  # pip install heic2png
 
 

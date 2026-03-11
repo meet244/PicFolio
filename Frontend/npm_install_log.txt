@@ -1,0 +1,110 @@
+﻿node.exe : npm warn ERESOLVE overriding peer 
+dependency
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm 
+    warn ERESOL...peer dependency:String) [], R  
+  emoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm warn While resolving: 
+@react-leaflet/core@2.1.0
+npm warn Found: react@19.0.0
+npm warn node_modules/react
+npm warn   react@"^19.0.0" from the root project
+npm warn   16 more (@floating-ui/react, 
+@floating-ui/react-dom, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.0.0" from 
+@react-leaflet/core@2.1.0
+npm warn node_modules/@react-leaflet/core
+npm warn   @react-leaflet/core@"^2.1.0" from 
+react-leaflet@4.2.1
+npm warn   node_modules/react-leaflet
+npm warn
+npm warn Conflicting peer dependency: 
+react@18.3.1
+npm warn node_modules/react
+npm warn   peer react@"^18.0.0" from 
+@react-leaflet/core@2.1.0
+npm warn   node_modules/@react-leaflet/core
+npm warn     @react-leaflet/core@"^2.1.0" from 
+react-leaflet@4.2.1
+npm warn     node_modules/react-leaflet
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: 
+@react-leaflet/core@2.1.0
+npm warn Found: react-dom@19.0.0
+npm warn node_modules/react-dom
+npm warn   react-dom@"^19.0.0" from the root 
+project
+npm warn   8 more (@floating-ui/react, 
+@floating-ui/react-dom, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react-dom@"^18.0.0" from 
+@react-leaflet/core@2.1.0
+npm warn node_modules/@react-leaflet/core
+npm warn   @react-leaflet/core@"^2.1.0" from 
+react-leaflet@4.2.1
+npm warn   node_modules/react-leaflet
+npm warn
+npm warn Conflicting peer dependency: 
+react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peer react-dom@"^18.0.0" from 
+@react-leaflet/core@2.1.0
+npm warn   node_modules/@react-leaflet/core
+npm warn     @react-leaflet/core@"^2.1.0" from 
+react-leaflet@4.2.1
+npm warn     node_modules/react-leaflet
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: react-leaflet@4.2.1
+npm error Found: react@19.0.0
+npm error node_modules/react
+npm error   react@"^19.0.0" from the root project
+npm error   peer react@">=16.8.0" from 
+@floating-ui/react@0.26.28
+npm error   node_modules/@floating-ui/react
+npm error     @floating-ui/react@"^0.26.16" from 
+@headlessui/react@2.2.0
+npm error     node_modules/@headlessui/react
+npm error       @headlessui/react@"^2.2.0" from 
+the root project
+npm error   15 more (@floating-ui/react-dom, 
+@headlessui/react, ...)
+npm error
+npm error Could not resolve dependency:
+npm error peer react@"^18.0.0" from 
+react-leaflet@4.2.1
+npm error node_modules/react-leaflet
+npm error   react-leaflet@"^4.2.1" from the root 
+project
+npm error
+npm error Conflicting peer dependency: 
+react@18.3.1
+npm error node_modules/react
+npm error   peer react@"^18.0.0" from 
+react-leaflet@4.2.1
+npm error   node_modules/react-leaflet
+npm error     react-leaflet@"^4.2.1" from the 
+root project
+npm error
+npm error Fix the upstream dependency conflict, 
+or retry
+npm error this command with --force or 
+--legacy-peer-deps
+npm error to accept an incorrect (and 
+potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error C:\Users\Meet\AppData\Local\npm-cache\_
+logs\2026-03-11T13_45_19_186Z-eresolve-report.txt
+npm error A complete log of this run can be 
+found in: C:\Users\Meet\AppData\Local\npm-cache\_
+logs\2026-03-11T13_45_19_186Z-debug-0.log
