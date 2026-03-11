@@ -18,7 +18,16 @@
 
 - ### Web 🌐
 
-  
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/8de2f237-2480-48a6-babc-d65d25792a99" width="400">
+  <img src="https://github.com/user-attachments/assets/d49a3d53-7a7c-4720-8193-ecc9902df8e4" width="400">
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/c04a3191-8a2b-4bb7-8e14-b9ad4bf2cbbe" width="400">
+  <img src="https://github.com/user-attachments/assets/85eb7923-f1cb-43bc-931e-40bc0ae6dac2" width="400">
+</p>
+
 
 ---
 
